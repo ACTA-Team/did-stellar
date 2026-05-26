@@ -1,0 +1,54 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish @acta-team/did-stellar
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build SDK
+        run: pnpm --filter @acta-team/did-stellar run build
+
+      - name: Verify tests pass
+        run: pnpm --filter @acta-team/did-stellar run test
+
+      # --- Publish to npmjs.org ---
+      - name: Configure npm registry
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+
+      - name: Publish to npm
+        working-directory: packages/resolver
+        run: npm publish --access public --provenance
+
+      # --- Publish to GitHub Packages ---
+      - name: Configure GitHub Packages registry
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
+
+      - name: Publish to GitHub Packages
+        working-directory: packages/resolver
+        run: npm publish --registry=https://npm.pkg.github.com --access public --provenance=false
