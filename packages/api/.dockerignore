@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.turbo
+.git
+*.log
+.env
+.env.*
+!.env.example
+README.md
+CHANGELOG.md
+tests

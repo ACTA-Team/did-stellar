@@ -1,0 +1,93 @@
+{
+  "name": "@acta-team/did-stellar",
+  "version": "0.1.0",
+  "description": "Official TypeScript SDK for the did:stellar v0.1 method. DIF did-resolver compatible, prepare/submit XDR helpers, and W3C-compliant DID Document construction.",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./resolver": {
+      "types": "./dist/resolver/index.d.ts",
+      "import": "./dist/resolver/index.mjs",
+      "require": "./dist/resolver/index.js"
+    },
+    "./hooks": {
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/hooks/index.mjs",
+      "require": "./dist/hooks/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "clean": "rimraf dist .turbo coverage",
+    "prepublishOnly": "pnpm run build"
+  },
+  "keywords": [
+    "did",
+    "did-stellar",
+    "did-resolver",
+    "stellar",
+    "soroban",
+    "self-sovereign-identity",
+    "ssi",
+    "w3c",
+    "verifiable-credentials",
+    "decentralized-identity",
+    "dif"
+  ],
+  "author": "ACTA",
+  "license": "MIT",
+  "homepage": "https://github.com/ACTA-Team/did-stellar/tree/main/packages/resolver",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ACTA-Team/did-stellar.git",
+    "directory": "packages/resolver"
+  },
+  "bugs": {
+    "url": "https://github.com/ACTA-Team/did-stellar/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "provenance": true
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0 <20.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  },
+  "dependencies": {
+    "@noble/ed25519": "^2.1.0",
+    "@scure/base": "^1.1.9",
+    "@stellar/stellar-sdk": "^15.0.0",
+    "axios": "^1.15.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=22.22.0 <25"
+  }
+}

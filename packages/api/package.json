@@ -1,0 +1,56 @@
+{
+  "name": "did-stellar-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone HTTP service for the did:stellar v0.1 method. Wraps @acta-team/did-stellar; exposes a W3C DID Resolver (GET /1.0/identifiers/{did}) plus the lifecycle endpoints. No auth, trust-minimised.",
+  "license": "MIT",
+  "author": "ACTA",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "bin": {
+    "did-stellar-api": "dist/index.js"
+  },
+  "files": ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:watch": "tsc -p tsconfig.build.json --watch",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "clean": "rimraf dist .turbo coverage"
+  },
+  "engines": {
+    "node": ">=22.22.0 <25"
+  },
+  "dependencies": {
+    "@acta-team/did-stellar": "workspace:*",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.10.0",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0"
+  },
+  "devDependencies": {
+    "@stellar/stellar-sdk": "^15.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/supertest": "^7.2.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "rimraf": "^6.0.1",
+    "supertest": "^7.2.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ACTA-Team/did-stellar.git",
+    "directory": "packages/api"
+  }
+}
