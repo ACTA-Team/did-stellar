@@ -27,9 +27,11 @@ WORKDIR /app
 # Non-root user.
 RUN useradd --system --uid 10001 --gid nogroup --no-create-home didapi
 
+# node_modules + package.json come from `pnpm deploy --prod` (pruned).
+# dist/ comes from the tsc build output (pnpm deploy does NOT copy it).
 COPY --from=builder --chown=didapi:nogroup /out/node_modules ./node_modules
-COPY --from=builder --chown=didapi:nogroup /out/dist ./dist
 COPY --from=builder --chown=didapi:nogroup /out/package.json ./package.json
+COPY --from=builder --chown=didapi:nogroup /repo/packages/api/dist ./dist
 
 ENV NODE_ENV=production
 ENV PORT=8080
