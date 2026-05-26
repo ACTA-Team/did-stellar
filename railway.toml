@@ -1,0 +1,14 @@
+[build]
+# Dockerfile path relative to the repo root.
+# Railway automatically uses the repo root as Docker build context
+# when dockerfilePath points to a subdirectory — which is what our
+# multi-stage Dockerfile expects (it COPYs from the workspace root).
+dockerfilePath = "packages/api/Dockerfile"
+
+[deploy]
+# The PORT env var is set by Railway automatically; our app reads it
+# from process.env.PORT (defaults to 8080 if absent).
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
