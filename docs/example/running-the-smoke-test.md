@@ -15,7 +15,7 @@ what the real contract returns.
 |---|---|
 | Before opening a PR that changes anything under `packages/resolver/src/record/`, `prepare/`, or `resolver/` | **Yes** |
 | Before tagging a release of `@acta-team/did-stellar` | **Yes** |
-| Before publishing a new Docker image of `did-stellar-api` | **Yes** |
+| Before deploying a new version of [`did.acta.build`](https://did.acta.build) | **Yes** |
 | You bumped `@stellar/stellar-sdk` | **Yes** — SDK shape changes have caused regressions before |
 | You only touched docs / tests / CI / lint config | No |
 | You only touched `packages/api/src/middleware/`, `lib/`, `routes/health.ts` | No — those are infra around the SDK, not against the contract |

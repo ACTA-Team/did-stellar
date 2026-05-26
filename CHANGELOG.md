@@ -3,7 +3,7 @@
 All notable changes to the `did-stellar` monorepo are documented in this
 file. The monorepo hosts the SDK
 ([`@acta-team/did-stellar`](./packages/resolver)) and the standalone
-HTTP service ([`did-stellar-api`](./packages/api)) for the
+HTTP resolver service ([`did.acta.build`](https://did.acta.build), source in [`packages/api`](./packages/api)) for the
 [`did:stellar` v0.1 DID method](https://github.com/ACTA-Team/contracts-acta/blob/main/docs/did-spec/did-stellar-v0.1.md).
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
@@ -35,7 +35,7 @@ proved against the live contract.
   reader, prepare/submit XDR helpers, JCS proof-of-control verifier,
   and a DIF [`did-resolver`](https://www.npmjs.com/package/did-resolver)
   driver.
-- **`did-stellar-api` v0.1.0** — Express 5 HTTP service wrapping the
+- **[`did.acta.build`](https://did.acta.build) v0.1.0** — Express 5 HTTP resolver wrapping the
   SDK; exposes `GET /1.0/identifiers/{did}` for DIF Universal
   Resolver compatibility plus the lifecycle endpoints.
 - **`examples/smoke-testnet`** — end-to-end smoke test that
@@ -126,7 +126,7 @@ exports for `./resolver` (DIF driver, minimal bundle) and `./hooks`
   stateless; verifiers plug Redis / in-memory).
 - **Optional HTTP client** —
   `ActaDidClient` for integrators that prefer fetch over a
-  Stellar RPC dependency. Talks to `did-stellar-api`.
+  Stellar RPC dependency. Talks to [`did.acta.build`](https://did.acta.build).
 - **React hook** —
   `useDid()` exposed via `./hooks` subpath. Mirrors the
   prepare/sign/submit flow for browser apps. Signer is a
@@ -195,10 +195,10 @@ exports for `./resolver` (DIF driver, minimal bundle) and `./hooks`
 
 ---
 
-### `did-stellar-api` (the HTTP service)
+### [`did.acta.build`](https://did.acta.build) (the HTTP resolver service)
 
 **Path**: `packages/api/`
-**Distribution**: Docker image (planned: `ghcr.io/acta-team/did-stellar-api`)
+**Distribution**: [`did.acta.build`](https://did.acta.build) (Railway)
 **Auth**: none — trust-minimised per spec §1.4
 **State**: stateless; optional Redis for cache + rate-limit
 

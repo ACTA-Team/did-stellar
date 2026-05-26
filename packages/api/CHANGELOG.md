@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `did-stellar-api` are documented in this file.
+All notable changes to the [`did.acta.build`](https://did.acta.build) HTTP resolver service are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/).
 

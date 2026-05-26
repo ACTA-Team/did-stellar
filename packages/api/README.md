@@ -1,15 +1,15 @@
-# `did-stellar-api`
+# `did.acta.build`
 
-Standalone HTTP service for the [`did:stellar`](https://github.com/ACTA-Team/contracts-acta/blob/main/docs/did-spec/did-stellar-v0.1.md)
+Standalone HTTP resolver for the [`did:stellar`](https://github.com/ACTA-Team/contracts-acta/blob/main/docs/did-spec/did-stellar-v0.1.md)
 v0.1 method. Thin wrapper around
-[`@acta-team/did-stellar`](../did-stellar): the SDK does the work, this
+[`@acta-team/did-stellar`](../resolver): the SDK does the work, this
 service exposes it as HTTP for non-JS consumers and for the
 [DIF Universal Resolver](https://dev.uniresolver.io/).
 
 | | |
 |---|---|
-| **Distribution** | Docker image `ghcr.io/acta-team/did-stellar-api` |
-| **Default port** | `8080` |
+| **Live URL** | [`did.acta.build`](https://did.acta.build) |
+| **Hosting** | Railway |
 | **Auth** | **None** — trust-minimised per spec §1.4 / §9.5 |
 | **State** | Stateless. Optional Redis for cache + rate-limit |
 | **Method spec** | [`did:stellar` v0.1](https://github.com/ACTA-Team/contracts-acta/blob/main/docs/did-spec/did-stellar-v0.1.md) |

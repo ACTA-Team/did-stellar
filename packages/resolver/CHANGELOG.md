@@ -33,7 +33,7 @@ surface against `did-stellar-registry` v0.1.0 (testnet contract
 - **Proof of control** — `jcsCanonicalize` (RFC 8785),
   `buildChallenge`, `verifyProofOfControl` with timestamp + nonce +
   domain checks per spec §6.5 / §7.5.
-- **HTTP client** — optional `ActaDidClient` for `did-stellar-api`.
+- **HTTP client** — optional `ActaDidClient` for [`did.acta.build`](https://did.acta.build).
 - **React hook** — `useDid()` exposed via `./hooks` subpath.
 - **Typed errors** — `DidError` + `DidErrorCode` covering every
   `RegistryError` plus transport and client-side codes.

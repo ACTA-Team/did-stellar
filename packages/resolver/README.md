@@ -26,7 +26,7 @@ Official TypeScript SDK for the [`did:stellar` v0.1 method](https://github.com/A
 - **Proof of control** — JCS-canonicalised challenges, `buildChallenge`,
   `verifyProofOfControl` (Ed25519, ±5 min replay window).
 - **Optional HTTP client** — `ActaDidClient` for integrators that
-  prefer talking to `did-stellar-api` rather than wiring a Stellar RPC
+  prefer talking to [`did.acta.build`](https://did.acta.build) rather than wiring a Stellar RPC
   themselves.
 - **React hook** — `useDid()` (subpath `@acta-team/did-stellar/hooks`)
   for browser apps.
