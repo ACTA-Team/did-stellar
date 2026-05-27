@@ -6,7 +6,12 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
-  "files": ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -71,7 +76,9 @@
     "react": ">=18.0.0 <20.0.0"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true }
+    "react": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@noble/ed25519": "^2.1.0",
@@ -88,6 +95,6 @@
     "vitest": "^2.1.0"
   },
   "engines": {
-    "node": ">=22.22.0 <25"
+    "node": ">=22.22.1 <25"
   }
 }

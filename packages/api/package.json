@@ -30,7 +30,7 @@
     "clean": "rimraf dist .turbo coverage"
   },
   "engines": {
-    "node": ">=22.22.0 <25"
+    "node": ">=22.22.1 <25"
   },
   "dependencies": {
     "@acta-team/did-stellar": "workspace:*",

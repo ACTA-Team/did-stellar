@@ -3,7 +3,7 @@
 # Stage 1: build the workspace, prune to production deps.
 # Stage 2: minimal distroless runtime.
 
-FROM node:22.22.0-bookworm-slim AS builder
+FROM node:22.22.1-bookworm-slim AS builder
 WORKDIR /repo
 
 # Install pnpm via corepack (pinned in root package.json).
@@ -21,7 +21,7 @@ RUN pnpm --filter did-stellar-api run build
 RUN pnpm --filter did-stellar-api deploy --prod /out
 
 # ---------------------------------------------------------------------------
-FROM node:22.22.0-bookworm-slim AS runtime
+FROM node:22.22.1-bookworm-slim AS runtime
 WORKDIR /app
 
 # Non-root user.

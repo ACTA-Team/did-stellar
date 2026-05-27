@@ -262,7 +262,7 @@ exports for `./resolver` (DIF driver, minimal bundle) and `./hooks`
 
 #### Build / packaging
 
-- Multi-stage `Dockerfile` — `node:22.22.0-bookworm-slim` for
+- Multi-stage `Dockerfile` — `node:22.22.1-bookworm-slim` for
   build, deploy stage runs as `uid 10001` (`useradd
   --system`), no root, `HEALTHCHECK` calling `/health` every
   30s.
