@@ -9,6 +9,7 @@
 
 import { buildRpcServer } from '../internal/rpc';
 import { submitSignedXdr as submitSignedXdrInternal, type SubmittedTx } from '../internal/tx';
+
 import type { NetworkType } from '../network';
 
 export interface SubmitSignedXdrOptions {

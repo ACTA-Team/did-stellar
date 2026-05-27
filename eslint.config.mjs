@@ -1,3 +1,4 @@
+import importPlugin from 'eslint-plugin-import-x';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 
@@ -7,6 +8,9 @@ export default tseslint.config(
   },
   ...tseslint.configs.recommendedTypeChecked,
   {
+    plugins: {
+      'import-x': importPlugin,
+    },
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -26,6 +30,17 @@ export default tseslint.config(
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'always', { null: 'ignore' }],
+
+      'import-x/order': [
+        'error',
+        {
+          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'type'],
+          'newlines-between': 'always',
+          alphabetize: { order: 'asc', caseInsensitive: true },
+        },
+      ],
+      'import-x/newline-after-import': 'error',
+      'import-x/no-duplicates': 'error',
     },
   },
   {

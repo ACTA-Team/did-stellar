@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildDidDocument } from '../src/document/builder';
-import type { DidRecord } from '../src/record/types';
 
 import vectorsJson from './fixtures/vectors.json' assert { type: 'json' };
+
+import type { DidRecord } from '../src/record/types';
 
 interface RawKey {
   public_key_multibase: string;
@@ -29,7 +30,9 @@ interface RawRecord {
 const fromRaw = (raw: RawRecord, controller: string): DidRecord => ({
   controller,
   authentication: raw.authentication.map((k) => ({ publicKeyMultibase: k.public_key_multibase })),
-  assertionMethod: raw.assertion_method.map((k) => ({ publicKeyMultibase: k.public_key_multibase })),
+  assertionMethod: raw.assertion_method.map((k) => ({
+    publicKeyMultibase: k.public_key_multibase,
+  })),
   keyAgreement: raw.key_agreement.map((k) => ({ publicKeyMultibase: k.public_key_multibase })),
   services: raw.services.map((s) => ({
     idSuffix: s.id_suffix,

@@ -14,13 +14,13 @@
  * obvious which knobs every prepare function exposes.
  */
 
-import type { rpc } from '@stellar/stellar-sdk';
-
 import { DidError } from '../errors';
 import { parseDidStellar } from '../identifier';
 import { buildRpcServer } from '../internal/rpc';
-import type { NetworkType } from '../network';
 import { DEFAULT_REGISTRY_CONTRACT_IDS, DEFAULT_RPC_URLS } from '../network';
+
+import type { NetworkType } from '../network';
+import type { rpc } from '@stellar/stellar-sdk';
 
 /** Options common to every prepare/submit helper. */
 export interface CommonPrepareOptions {
@@ -52,7 +52,8 @@ export interface ResolvedContext {
  */
 export function resolveContext(did: string, opts: CommonPrepareOptions): ResolvedContext {
   const parsed = parseDidStellar(did);
-  const registryContractId = opts.registryContractId ?? DEFAULT_REGISTRY_CONTRACT_IDS[parsed.network];
+  const registryContractId =
+    opts.registryContractId ?? DEFAULT_REGISTRY_CONTRACT_IDS[parsed.network];
   if (!registryContractId) {
     throw new DidError(
       'contract_id_invalid',

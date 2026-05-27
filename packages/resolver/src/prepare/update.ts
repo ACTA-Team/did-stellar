@@ -11,11 +11,13 @@
 import { DidError } from '../errors';
 import { bytesN16ScVal, u32ScVal } from '../internal/scval';
 import { prepareInvokeXdr, type PreparedTx } from '../internal/tx';
-import type { NetworkType } from '../network';
 import { encodeDidRecord } from '../record/encode';
-import type { DidRecordInput } from '../record/types';
 import { validateDidRecordInput } from '../record/validate';
+
 import { resolveContext, type CommonPrepareOptions } from './common';
+
+import type { NetworkType } from '../network';
+import type { DidRecordInput } from '../record/types';
 
 export interface PrepareUpdateDidArgs extends CommonPrepareOptions {
   readonly did: string;
@@ -29,7 +31,10 @@ export async function prepareUpdateDidXdr(
   args: PrepareUpdateDidArgs
 ): Promise<PreparedTx & { network: NetworkType }> {
   if (!Number.isInteger(args.expectedVersion) || args.expectedVersion < 1) {
-    throw new DidError('expected_version_required', `expectedVersion must be an integer ≥ 1, got ${args.expectedVersion}`);
+    throw new DidError(
+      'expected_version_required',
+      `expectedVersion must be an integer ≥ 1, got ${args.expectedVersion}`
+    );
   }
   validateDidRecordInput(args.nextRecord);
   const ctx = resolveContext(args.did, args);

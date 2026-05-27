@@ -12,8 +12,10 @@ import { StrKey } from '@stellar/stellar-sdk';
 import { DidError } from '../errors';
 import { addressScVal, bytesN16ScVal, u32ScVal } from '../internal/scval';
 import { prepareInvokeXdr, type PreparedTx } from '../internal/tx';
-import type { NetworkType } from '../network';
+
 import { resolveContext, type CommonPrepareOptions } from './common';
+
+import type { NetworkType } from '../network';
 
 export interface PrepareTransferControllerArgs extends CommonPrepareOptions {
   readonly did: string;

@@ -8,9 +8,11 @@
  */
 
 import { DidError } from '../errors';
-import type { NetworkType } from '../network';
-import type { DidResolutionResult } from '../document/types';
+
 import { resolveDidStellar } from './resolve';
+
+import type { DidResolutionResult } from '../document/types';
+import type { NetworkType } from '../network';
 
 /** Per-network override for RPC URL + registry contract ID. */
 export interface GetResolverOptions {

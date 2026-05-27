@@ -10,17 +10,26 @@
 
 import { DidError } from '../errors';
 import { MAX_URL_LEN } from '../record/types';
+
 import type { Url } from './branded';
 
 /** Type guard for {@link Url}. */
 export function isHttpsUrl(s: string): s is Url {
-  return typeof s === 'string' && s.length > 8 && s.length <= MAX_URL_LEN && s.startsWith('https://');
+  return (
+    typeof s === 'string' && s.length > 8 && s.length <= MAX_URL_LEN && s.startsWith('https://')
+  );
 }
 
 /** Brand a string as {@link Url} or throw `metadata_uri_invalid`. */
-export function asHttpsUrl(s: string, code: 'metadata_uri_invalid' | 'service_endpoint_invalid'): Url {
+export function asHttpsUrl(
+  s: string,
+  code: 'metadata_uri_invalid' | 'service_endpoint_invalid'
+): Url {
   if (!isHttpsUrl(s)) {
-    throw new DidError(code, `expected absolute https:// URL (max ${MAX_URL_LEN} chars), got: ${s}`);
+    throw new DidError(
+      code,
+      `expected absolute https:// URL (max ${MAX_URL_LEN} chars), got: ${s}`
+    );
   }
   return s;
 }

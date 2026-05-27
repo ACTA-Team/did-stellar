@@ -7,6 +7,7 @@
  */
 
 import { DidError } from '../errors';
+
 import type { Hex32 } from './branded';
 
 const HEX32_REGEX = /^[0-9a-f]{64}$/;
@@ -36,7 +37,10 @@ export function hexToBytes(s: string): Uint8Array {
   for (let i = 0; i < out.length; i++) {
     const byte = Number.parseInt(s.slice(i * 2, i * 2 + 2), 16);
     if (Number.isNaN(byte)) {
-      throw new DidError('unknown', `invalid hex digit at offset ${i * 2}: ${s.slice(i * 2, i * 2 + 2)}`);
+      throw new DidError(
+        'unknown',
+        `invalid hex digit at offset ${i * 2}: ${s.slice(i * 2, i * 2 + 2)}`
+      );
     }
     out[i] = byte;
   }

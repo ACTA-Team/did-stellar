@@ -9,9 +9,8 @@
  * Any other Accept value falls back to `did+ld+json`.
  */
 
-import type { Request } from 'express';
-
 import type { DidDocument } from '@acta-team/did-stellar';
+import type { Request } from 'express';
 
 export type DidResponseContentType = 'application/did+ld+json' | 'application/did+json';
 

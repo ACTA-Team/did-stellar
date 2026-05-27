@@ -12,9 +12,6 @@ import express, { type Express, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
 
-import type { AppConfig } from './config';
-import type { Cache } from './lib/cache';
-import type { Logger } from './logger';
 import { errorHandler } from './middleware/error-handler';
 import { rateLimit } from './middleware/rate-limit';
 import { requestId } from './middleware/request-id';
@@ -24,6 +21,10 @@ import { healthRouter } from './routes/health';
 import { mutationsRouter } from './routes/mutations';
 import { recordsRouter } from './routes/records';
 import { resolverRouter } from './routes/resolver';
+
+import type { AppConfig } from './config';
+import type { Cache } from './lib/cache';
+import type { Logger } from './logger';
 
 export interface BuildAppDeps {
   readonly config: AppConfig;

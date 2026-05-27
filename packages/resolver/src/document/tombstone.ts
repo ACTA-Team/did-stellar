@@ -14,12 +14,9 @@
  * builder.
  */
 
+import { DID_CONTEXT_V1, type DidDocument, type DidDocumentMetadata } from './types';
+
 import type { DidRecord } from '../record/types';
-import {
-  DID_CONTEXT_V1,
-  type DidDocument,
-  type DidDocumentMetadata,
-} from './types';
 
 export interface BuildTombstoneOptions {
   readonly did: string;

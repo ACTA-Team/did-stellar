@@ -20,7 +20,9 @@ import { Address, StrKey, xdr, type rpc } from '@stellar/stellar-sdk';
 
 import { DidError } from '../errors';
 import { didRecordStorageKey } from '../internal/scval';
+
 import { decodeDidRecord } from './decode';
+
 import type { DidRecord } from './types';
 
 export interface ReadDidRecordOptions {

@@ -15,6 +15,7 @@ import { DidError } from '../errors';
 import { decodeAddress, decodeOption } from '../internal/scval';
 import { bytesToHex } from '../utils/hex';
 import { asHttpsUrl } from '../utils/url';
+
 import type { DidKey, DidRecord, DidService } from './types';
 
 /**
@@ -34,7 +35,8 @@ export function decodeDidRecord(val: xdr.ScVal): DidRecord {
   const services = readServiceVec(requireKey(map, 'services'));
 
   const metadataUriRaw = decodeOption<string>(requireKey(map, 'metadata_uri'));
-  const metadataUri = metadataUriRaw === null ? undefined : asHttpsUrl(metadataUriRaw, 'metadata_uri_invalid');
+  const metadataUri =
+    metadataUriRaw === null ? undefined : asHttpsUrl(metadataUriRaw, 'metadata_uri_invalid');
 
   const metadataHashBytes = decodeOption<Uint8Array | Buffer>(requireKey(map, 'metadata_hash'));
   const metadataHash =

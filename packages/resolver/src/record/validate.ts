@@ -16,7 +16,7 @@ import { DidError } from '../errors';
 import { decodeMultikey } from '../multikey';
 import { isHex32 } from '../utils/hex';
 import { isHttpsUrl } from '../utils/url';
-import type { DidKey, DidRecordInput, DidService } from './types';
+
 import {
   MAX_KEY_COUNT_AGREEMENT,
   MAX_KEY_COUNT_ASSERT,
@@ -29,6 +29,8 @@ import {
   METADATA_HASH_LEN,
   MIN_KEY_COUNT_AUTH,
 } from './types';
+
+import type { DidKey, DidRecordInput, DidService } from './types';
 
 const SERVICE_ID_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 

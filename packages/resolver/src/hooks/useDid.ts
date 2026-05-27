@@ -14,8 +14,9 @@
 
 import { useCallback } from 'react';
 
-import { resolveDidStellar } from '../resolver/resolve';
-import { readDidRecord } from '../record/reader';
+import { parseDidStellar } from '../identifier';
+import { buildRpcServer } from '../internal/rpc';
+import { DEFAULT_REGISTRY_CONTRACT_IDS, DEFAULT_RPC_URLS } from '../network';
 import {
   prepareDeactivateDidXdr,
   prepareRegisterDidXdr,
@@ -23,22 +24,19 @@ import {
   prepareUpdateDidXdr,
   submitSignedXdr,
 } from '../prepare';
-import type { CommonPrepareOptions } from '../prepare/common';
-import type { PrepareRegisterDidArgs } from '../prepare/register';
-import type { PrepareUpdateDidArgs } from '../prepare/update';
-import type { PrepareTransferControllerArgs } from '../prepare/transfer-controller';
-import type { PrepareDeactivateDidArgs } from '../prepare/deactivate';
+import { readDidRecord } from '../record/reader';
+import { resolveDidStellar } from '../resolver/resolve';
+
 import type { DidResolutionResult } from '../document/types';
+import type { CommonPrepareOptions } from '../prepare/common';
+import type { PrepareDeactivateDidArgs } from '../prepare/deactivate';
+import type { PrepareRegisterDidArgs } from '../prepare/register';
+import type { PrepareTransferControllerArgs } from '../prepare/transfer-controller';
+import type { PrepareUpdateDidArgs } from '../prepare/update';
 import type { DidRecord } from '../record/types';
-import { parseDidStellar } from '../identifier';
-import { buildRpcServer } from '../internal/rpc';
-import { DEFAULT_REGISTRY_CONTRACT_IDS, DEFAULT_RPC_URLS } from '../network';
 
 /** Function that signs an unsigned XDR with the given network passphrase. */
-export type Signer = (
-  unsignedXdr: string,
-  opts: { networkPassphrase: string }
-) => Promise<string>;
+export type Signer = (unsignedXdr: string, opts: { networkPassphrase: string }) => Promise<string>;
 
 type MutationResult = { readonly txId: string };
 
@@ -60,9 +58,7 @@ async function runMutation(
 /** Read helpers + the four mutation callbacks for `did-stellar-registry`. */
 export function useDid() {
   const register = useCallback(
-    async (
-      args: PrepareRegisterDidArgs & { sign: Signer }
-    ): Promise<MutationResult> => {
+    async (args: PrepareRegisterDidArgs & { sign: Signer }): Promise<MutationResult> => {
       const prepared = await prepareRegisterDidXdr(args);
       return runMutation(prepared, args.sign, args);
     },
@@ -78,9 +74,7 @@ export function useDid() {
   );
 
   const transfer = useCallback(
-    async (
-      args: PrepareTransferControllerArgs & { sign: Signer }
-    ): Promise<MutationResult> => {
+    async (args: PrepareTransferControllerArgs & { sign: Signer }): Promise<MutationResult> => {
       const prepared = await prepareTransferControllerXdr(args);
       return runMutation(prepared, args.sign, args);
     },
@@ -88,9 +82,7 @@ export function useDid() {
   );
 
   const deactivate = useCallback(
-    async (
-      args: PrepareDeactivateDidArgs & { sign: Signer }
-    ): Promise<MutationResult> => {
+    async (args: PrepareDeactivateDidArgs & { sign: Signer }): Promise<MutationResult> => {
       const prepared = await prepareDeactivateDidXdr(args);
       return runMutation(prepared, args.sign, args);
     },

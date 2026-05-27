@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { DidError } from '../src/errors';
 import {
   buildDidStellar,
   buildDidStellarFromBytes,
@@ -11,7 +12,6 @@ import {
   isValidDidStellar,
   parseDidStellar,
 } from '../src/identifier';
-import { DidError } from '../src/errors';
 
 import vectorsJson from './fixtures/vectors.json' assert { type: 'json' };
 

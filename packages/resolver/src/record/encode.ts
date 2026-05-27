@@ -13,14 +13,9 @@
 
 import { xdr } from '@stellar/stellar-sdk';
 
-import {
-  addressScVal,
-  bytesN32ScVal,
-  optionScVal,
-  stringScVal,
-  u32ScVal,
-} from '../internal/scval';
+import { addressScVal, bytesN32ScVal, optionScVal, stringScVal, u32ScVal } from '../internal/scval';
 import { hexToBytes } from '../utils/hex';
+
 import type { DidKey, DidRecordInput, DidService } from './types';
 
 const entry = (key: string, val: xdr.ScVal): xdr.ScMapEntry =>
@@ -57,7 +52,9 @@ export function encodeDidRecord(input: DidRecordInput): xdr.ScVal {
     entry('key_agreement', xdr.ScVal.scvVec(input.keyAgreement.map(keyEntry))),
     entry(
       'metadata_hash',
-      optionScVal(input.metadataHash !== undefined ? bytesN32ScVal(hexToBytes(input.metadataHash)) : null)
+      optionScVal(
+        input.metadataHash !== undefined ? bytesN32ScVal(hexToBytes(input.metadataHash)) : null
+      )
     ),
     entry(
       'metadata_uri',

@@ -3,9 +3,10 @@ import { base64urlnopad } from '@scure/base';
 import { describe, expect, it } from 'vitest';
 
 import { encodeMultikey } from '../src/multikey';
-import { jcsCanonicalize } from '../src/proof-of-control/jcs';
 import { buildChallenge } from '../src/proof-of-control/challenge';
+import { jcsCanonicalize } from '../src/proof-of-control/jcs';
 import { verifyProofOfControl } from '../src/proof-of-control/verify';
+
 import type { DidDocument } from '../src/document/types';
 
 const DID = 'did:stellar:testnet:aaaqeayeaudaocajbifqydiob4';

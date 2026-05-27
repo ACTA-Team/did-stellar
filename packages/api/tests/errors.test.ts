@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { DidError } from '@acta-team/did-stellar';
+import { describe, expect, it } from 'vitest';
 
 import { httpFromDidError, httpFromUnknown } from '../src/lib/errors';
 

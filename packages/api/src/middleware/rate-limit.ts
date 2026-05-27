@@ -11,9 +11,8 @@
  * `req.socket.remoteAddress`.
  */
 
-import type { NextFunction, Request, Response } from 'express';
-
 import type { Cache } from '../lib/cache';
+import type { NextFunction, Request, Response } from 'express';
 
 export interface RateLimitOptions {
   readonly cache: Cache;

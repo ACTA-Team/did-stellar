@@ -9,24 +9,22 @@
  * Cache hits never reach the Stellar RPC.
  */
 
-import { Router, type Request, type Response } from 'express';
-
 import {
   DidError,
   isValidDidStellar,
   resolveDidStellar,
   type DidResolutionResult,
 } from '@acta-team/did-stellar';
+import { Router, type Request, type Response } from 'express';
+
+import { negotiateContentType, projectDocumentForContentType } from '../lib/content-negotiation';
+import { httpFromDidError } from '../lib/errors';
 
 import type { AppConfig } from '../config';
 import type { Cache } from '../lib/cache';
-import {
-  negotiateContentType,
-  projectDocumentForContentType,
-} from '../lib/content-negotiation';
-import { httpFromDidError } from '../lib/errors';
 
-const CACHE_KEY = (did: string, network: string): string => `did-stellar-api:resolve:${network}:${did}`;
+const CACHE_KEY = (did: string, network: string): string =>
+  `did-stellar-api:resolve:${network}:${did}`;
 
 export interface ResolverRouterDeps {
   readonly config: AppConfig;
@@ -44,9 +42,10 @@ export function resolverRouter(deps: ResolverRouterDeps): Router {
     const contentType = negotiateContentType(req);
 
     if (!isValidDidStellar(rawDid)) {
-      res.status(400).type(contentType).json(
-        emptyResult('invalidDid', `not a valid did:stellar identifier: ${rawDid}`)
-      );
+      res
+        .status(400)
+        .type(contentType)
+        .json(emptyResult('invalidDid', `not a valid did:stellar identifier: ${rawDid}`));
       return;
     }
 
@@ -77,10 +76,7 @@ export function resolverRouter(deps: ResolverRouterDeps): Router {
 
     // Cache active and tombstone responses. Do NOT cache transport
     // errors — `notFound` we DO cache (short TTL) to dampen fuzzing.
-    if (
-      !result.didResolutionMetadata.error ||
-      result.didResolutionMetadata.error === 'notFound'
-    ) {
+    if (!result.didResolutionMetadata.error || result.didResolutionMetadata.error === 'notFound') {
       await deps.cache.set(cacheKey, { status, body: result }, deps.config.resolverCacheTtlSeconds);
     }
 

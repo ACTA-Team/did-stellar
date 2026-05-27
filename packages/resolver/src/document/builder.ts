@@ -16,7 +16,6 @@
  *   (1-based) and `#service-{idSuffix}`.
  */
 
-import type { DidRecord } from '../record/types';
 import { buildTombstone } from './tombstone';
 import {
   DID_CONTEXT_V1,
@@ -26,6 +25,8 @@ import {
   type DidServiceEntry,
   type VerificationMethod,
 } from './types';
+
+import type { DidRecord } from '../record/types';
 
 export interface BuildDidDocumentOptions {
   /** Canonical `did:stellar:...` identifier. */

@@ -7,8 +7,6 @@
  * `controller` directly.
  */
 
-import { Router, type Request, type Response } from 'express';
-
 import {
   buildRpcServer,
   DidError,
@@ -16,9 +14,11 @@ import {
   parseDidStellar,
   readDidRecord,
 } from '@acta-team/did-stellar';
+import { Router, type Request, type Response } from 'express';
+
+import { httpFromDidError } from '../lib/errors';
 
 import type { AppConfig } from '../config';
-import { httpFromDidError } from '../lib/errors';
 
 export interface RecordsRouterDeps {
   readonly config: AppConfig;
@@ -29,9 +29,7 @@ export function recordsRouter(deps: RecordsRouterDeps): Router {
 
   router.get('/v1/dids/stellar/:did', async (req: Request, res: Response): Promise<void> => {
     const param = req.params['did'];
-    const rawDid = decodeURIComponent(
-      Array.isArray(param) ? (param[0] ?? '') : (param ?? '')
-    );
+    const rawDid = decodeURIComponent(Array.isArray(param) ? (param[0] ?? '') : (param ?? ''));
     if (!isValidDidStellar(rawDid)) {
       res.status(400).json({ code: 'did_invalid', message: `not a valid did:stellar: ${rawDid}` });
       return;

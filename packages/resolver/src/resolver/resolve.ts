@@ -9,14 +9,15 @@
  * registry contract ID. No ACTA-hosted endpoint is contacted.
  */
 
+import { buildDidDocument } from '../document/builder';
 import { DidError } from '../errors';
 import { parseDidStellar } from '../identifier';
 import { buildRpcServer } from '../internal/rpc';
-import type { NetworkType } from '../network';
 import { DEFAULT_REGISTRY_CONTRACT_IDS, DEFAULT_RPC_URLS } from '../network';
 import { readDidRecord } from '../record/reader';
-import { buildDidDocument } from '../document/builder';
+
 import type { DidResolutionResult } from '../document/types';
+import type { NetworkType } from '../network';
 
 export interface ResolveDidStellarOptions {
   /** Stellar RPC URL. Defaults to the SDF public endpoint for the parsed network. */

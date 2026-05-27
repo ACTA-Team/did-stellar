@@ -22,6 +22,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 
 import { DidError } from './errors';
+
 import type { DidDocument, DidResolutionResult } from './document/types';
 import type { DidRecord, DidRecordInput } from './record/types';
 

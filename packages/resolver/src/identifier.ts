@@ -14,8 +14,9 @@
 
 import { decodeBase32Lower, encodeBase32Lower } from './base32';
 import { DidError } from './errors';
-import type { NetworkType } from './network';
 import { isNetworkType } from './network';
+
+import type { NetworkType } from './network';
 
 /** Number of bytes in the raw `didId`. Fixed at 16 per spec §2.3. */
 export const DID_ID_BYTES = 16;
@@ -73,10 +74,7 @@ export function encodeDidId(bytes: Uint8Array): string {
 /** Decode a canonical 26-character base32 `didId` back to 16 raw bytes. */
 export function decodeDidId(s: string): Uint8Array {
   if (!DID_ID_REGEX.test(s)) {
-    throw new DidError(
-      'did_id_invalid',
-      `didId must match ${DID_ID_REGEX.source}, got: ${s}`
-    );
+    throw new DidError('did_id_invalid', `didId must match ${DID_ID_REGEX.source}, got: ${s}`);
   }
   const bytes = decodeBase32Lower(s);
   if (bytes.length !== DID_ID_BYTES) {
@@ -91,7 +89,10 @@ export function decodeDidId(s: string): Uint8Array {
 /** Compose the full DID from a base32 `didId`. */
 export function buildDidStellar(network: NetworkType, didId: string): string {
   if (!isNetworkType(network)) {
-    throw new DidError('network_invalid', `network must be mainnet or testnet, got: ${String(network)}`);
+    throw new DidError(
+      'network_invalid',
+      `network must be mainnet or testnet, got: ${String(network)}`
+    );
   }
   if (!DID_ID_REGEX.test(didId)) {
     throw new DidError('did_id_invalid', `didId must match ${DID_ID_REGEX.source}, got: ${didId}`);
@@ -123,15 +124,15 @@ export function parseDidStellar(did: string): ParsedDidStellar {
   }
   const match = DID_STELLAR_REGEX.exec(did);
   if (!match) {
-    throw new DidError(
-      'did_invalid',
-      `DID does not match ${DID_STELLAR_REGEX.source}: ${did}`
-    );
+    throw new DidError('did_invalid', `DID does not match ${DID_STELLAR_REGEX.source}: ${did}`);
   }
   const network = match[1] as NetworkType;
   const didId = match[2];
   if (didId === undefined) {
-    throw new DidError('did_invalid', `unreachable: regex matched but capture group 2 missing for ${did}`);
+    throw new DidError(
+      'did_invalid',
+      `unreachable: regex matched but capture group 2 missing for ${did}`
+    );
   }
   const didIdBytes = decodeDidId(didId);
   return { network, didId, didIdBytes };

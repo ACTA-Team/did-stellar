@@ -9,11 +9,13 @@
 
 import { bytesN16ScVal } from '../internal/scval';
 import { prepareInvokeXdr, type PreparedTx } from '../internal/tx';
-import type { NetworkType } from '../network';
 import { encodeDidRecord } from '../record/encode';
-import type { DidRecordInput } from '../record/types';
 import { validateDidRecordInput } from '../record/validate';
+
 import { resolveContext, type CommonPrepareOptions } from './common';
+
+import type { NetworkType } from '../network';
+import type { DidRecordInput } from '../record/types';
 
 export interface PrepareRegisterDidArgs extends CommonPrepareOptions {
   /** Canonical `did:stellar:...` to register. */
@@ -32,7 +34,9 @@ export interface PrepareRegisterDidArgs extends CommonPrepareOptions {
  * SDK does not enforce a tighter constraint, but recommends keeping
  * them aligned to avoid wallet confusion.
  */
-export async function prepareRegisterDidXdr(args: PrepareRegisterDidArgs): Promise<PreparedTx & { network: NetworkType }> {
+export async function prepareRegisterDidXdr(
+  args: PrepareRegisterDidArgs
+): Promise<PreparedTx & { network: NetworkType }> {
   validateDidRecordInput(args.record);
   const ctx = resolveContext(args.did, args);
 

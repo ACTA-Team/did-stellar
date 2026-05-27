@@ -23,6 +23,24 @@ state of the monorepo.
 - **Swagger UI at `GET /docs`** — interactive API explorer powered by
   `swagger-ui-dist`, served from the same Express instance. Loads the
   existing `/openapi.json` spec. No external CDN dependency.
+- **`GET /`** redirects to `/docs` — visiting the root URL lands on
+  the Swagger UI instead of a 404.
+- **`CONTRIBUTING.md`** — contributor guide covering setup, workflow,
+  conventions, and PR process.
+- **`.gitattributes`** — enforces LF line endings, marks
+  `pnpm-lock.yaml` as `merge=ours` to prevent lockfile merge
+  conflicts, tags `dist/` and `coverage/` as `linguist-generated`.
+- **Husky + lint-staged** — pre-commit hook formats staged files with
+  Prettier; pre-push hook runs `lint` + `typecheck`.
+
+### Changed
+
+- **Import ordering enforced** — added `eslint-plugin-import-x` with
+  alphabetical, grouped import rules (builtin → external → internal →
+  parent → sibling → type). All existing imports auto-sorted.
+- **Removed `DOM` lib from `tsconfig.base.json`** — both the SDK and
+  the API run in Node; the React hook uses `useCallback` (no DOM
+  APIs). Consumers' bundlers provide DOM types when needed.
 
 ---
 

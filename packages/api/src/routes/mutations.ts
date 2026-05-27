@@ -20,8 +20,6 @@
  * a privileged way.
  */
 
-import { Router, type Request, type Response } from 'express';
-
 import {
   DidError,
   isValidDidStellar,
@@ -34,9 +32,11 @@ import {
   type DidRecordInput,
   type NetworkType,
 } from '@acta-team/did-stellar';
+import { Router, type Request, type Response } from 'express';
+
+import { httpFromDidError } from '../lib/errors';
 
 import type { AppConfig } from '../config';
-import { httpFromDidError } from '../lib/errors';
 
 export interface MutationsRouterDeps {
   readonly config: AppConfig;
@@ -77,7 +77,10 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
         return submit(signedXdr, deps.config);
       }
       const did = requireDid(req, deps.config.network);
-      const { expectedVersion, record, sourcePublicKey } = parseUpdateBody(req.body, deps.config.network);
+      const { expectedVersion, record, sourcePublicKey } = parseUpdateBody(
+        req.body,
+        deps.config.network
+      );
       const prepared = await prepareUpdateDidXdr({
         did,
         expectedVersion,
@@ -164,11 +167,7 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-async function handle<T>(
-  req: Request,
-  res: Response,
-  fn: () => Promise<T>
-): Promise<void> {
+async function handle<T>(req: Request, res: Response, fn: () => Promise<T>): Promise<void> {
   try {
     const payload = await fn();
     res.json(payload);
@@ -325,7 +324,8 @@ function coerceDidRecordInput(obj: Record<string, unknown>, key: string): DidRec
     throw new DidError('unknown', `body.${key}.${suffix}`);
   };
   const controller = obj['controller'];
-  if (typeof controller !== 'string' || controller.length === 0) fail('controller must be a non-empty string');
+  if (typeof controller !== 'string' || controller.length === 0)
+    fail('controller must be a non-empty string');
 
   const auth = obj['authentication'];
   if (!Array.isArray(auth)) fail('authentication must be an array');

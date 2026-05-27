@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DidError } from '../src/errors';
 import { validateDidRecordInput } from '../src/record/validate';
+
 import type { DidRecordInput } from '../src/record/types';
 
 const CONTROLLER = Keypair.random().publicKey();
@@ -53,7 +54,9 @@ describe('validateDidRecordInput', () => {
   });
 
   it('rejects authentication with zero keys', () => {
-    expect(() => validateDidRecordInput(minimal({ authentication: [] }))).toThrowError(/invalid_auth_key_count|/);
+    expect(() => validateDidRecordInput(minimal({ authentication: [] }))).toThrowError(
+      /invalid_auth_key_count|/
+    );
   });
 
   it('rejects more than 3 assertion keys', () => {

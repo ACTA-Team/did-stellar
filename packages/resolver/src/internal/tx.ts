@@ -13,20 +13,13 @@
  * the SDK never has to inspect raw Soroban error strings.
  */
 
-import type {
-  rpc,
-  xdr} from '@stellar/stellar-sdk';
-import {
-  Account,
-  Contract,
-  Operation,
-  StrKey,
-  TransactionBuilder
-} from '@stellar/stellar-sdk';
+import { Account, Contract, Operation, StrKey, TransactionBuilder } from '@stellar/stellar-sdk';
 
 import { DidError, fromContractErrorMessage } from '../errors';
-import type { NetworkType } from '../network';
 import { NETWORK_PASSPHRASES } from '../network';
+
+import type { NetworkType } from '../network';
+import type { rpc, xdr } from '@stellar/stellar-sdk';
 
 export interface PrepareInvokeArgs {
   readonly rpcServer: rpc.Server;
@@ -109,7 +102,9 @@ export async function prepareInvokeXdr(args: PrepareInvokeArgs): Promise<Prepare
   } catch (cause) {
     const typed = fromContractErrorMessage(cause);
     if (typed) throw typed;
-    throw new DidError('tx_simulation_failed', 'Failed to simulate / prepare transaction', { cause });
+    throw new DidError('tx_simulation_failed', 'Failed to simulate / prepare transaction', {
+      cause,
+    });
   }
 }
 
@@ -169,8 +164,17 @@ export async function submitSignedXdr(args: SubmitSignedXdrArgs): Promise<Submit
     throw new DidError('tx_submission_failed', 'sendTransaction did not return a hash');
   }
 
-  if (sendResp.status === 'PENDING' || sendResp.status === 'DUPLICATE' || sendResp.status === 'TRY_AGAIN_LATER') {
-    await pollUntilFinal(args.rpcServer, hash, args.timeoutMs ?? 30_000, args.pollIntervalMs ?? 1_000);
+  if (
+    sendResp.status === 'PENDING' ||
+    sendResp.status === 'DUPLICATE' ||
+    sendResp.status === 'TRY_AGAIN_LATER'
+  ) {
+    await pollUntilFinal(
+      args.rpcServer,
+      hash,
+      args.timeoutMs ?? 30_000,
+      args.pollIntervalMs ?? 1_000
+    );
   }
 
   return { txId: hash };
@@ -198,12 +202,17 @@ async function pollUntilFinal(
       // We surface the raw XDR string in details so consumers can drill in
       // when they need to, while keeping the message stable.
       const typed = fromContractErrorMessage(
-        (resp as unknown as { resultXdr?: { toXDR: () => Buffer } }).resultXdr?.toXDR().toString('base64') ?? ''
+        (resp as unknown as { resultXdr?: { toXDR: () => Buffer } }).resultXdr
+          ?.toXDR()
+          .toString('base64') ?? ''
       );
       if (typed) throw typed;
       throw new DidError('tx_submission_failed', `transaction ${hash} failed on-chain`);
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
-  throw new DidError('tx_submission_failed', `transaction ${hash} did not finalise within ${timeoutMs}ms`);
+  throw new DidError(
+    'tx_submission_failed',
+    `transaction ${hash} did not finalise within ${timeoutMs}ms`
+  );
 }

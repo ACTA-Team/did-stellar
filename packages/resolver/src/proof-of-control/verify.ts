@@ -17,10 +17,12 @@ import { verifyAsync } from '@noble/ed25519';
 import { base64urlnopad } from '@scure/base';
 
 import { DidError, type DidErrorCode } from '../errors';
-import type { DidDocument } from '../document/types';
 import { decodeMultikey } from '../multikey';
+
 import { jcsCanonicalize } from './jcs';
+
 import type { PoCChallenge } from './challenge';
+import type { DidDocument } from '../document/types';
 
 /** Default ±window for the timestamp check (5 minutes per §6.5 step 2). */
 export const DEFAULT_TIMESTAMP_WINDOW_MS = 5 * 60 * 1000;
@@ -67,7 +69,10 @@ export async function verifyProofOfControl(
   // 1. Timestamp window (BEFORE signature check, per §6.5 / §7.5).
   const tsMs = Date.parse(args.challenge.timestamp);
   if (!Number.isFinite(tsMs)) {
-    return reason('challenge_invalid', `unparseable challenge.timestamp: ${args.challenge.timestamp}`);
+    return reason(
+      'challenge_invalid',
+      `unparseable challenge.timestamp: ${args.challenge.timestamp}`
+    );
   }
   if (Math.abs(now() - tsMs) > windowMs) {
     return reason('challenge_expired', `challenge.timestamp outside ±${windowMs}ms window`);

@@ -7,13 +7,14 @@
  * exercise the genuine wiring and only assert HTTP-shape concerns.
  */
 
-import { describe, expect, it, beforeEach } from 'vitest';
-import request from 'supertest';
-import pino from 'pino';
 import { Keypair } from '@stellar/stellar-sdk';
+import pino from 'pino';
+import request from 'supertest';
+import { describe, expect, it, beforeEach } from 'vitest';
 
-import { buildApp } from '../src/server';
 import { InMemoryCache } from '../src/lib/cache';
+import { buildApp } from '../src/server';
+
 import type { AppConfig } from '../src/config';
 
 const TESTNET_CONTRACT = 'CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ';
@@ -69,23 +70,21 @@ describe('did-stellar-api / server', () => {
 
   describe('GET /1.0/identifiers/:did', () => {
     it('rejects a malformed DID with 400 invalidDid', async () => {
-      const res = await request(makeApp())
-        .get('/1.0/identifiers/not-a-did');
+      const res = await request(makeApp()).get('/1.0/identifiers/not-a-did');
       expect(res.status).toBe(400);
       expect(res.body.didResolutionMetadata.error).toBe('invalidDid');
     });
 
     it('rejects uppercase variants with 400', async () => {
-      const res = await request(makeApp())
-        .get('/1.0/identifiers/DID:STELLAR:TESTNET:AAAQEAYEAUDAOCAJBIFQYDIOB4');
+      const res = await request(makeApp()).get(
+        '/1.0/identifiers/DID:STELLAR:TESTNET:AAAQEAYEAUDAOCAJBIFQYDIOB4'
+      );
       expect(res.status).toBe(400);
       expect(res.body.didResolutionMetadata.error).toBe('invalidDid');
     });
 
     it('returns application/did+ld+json by default', async () => {
-      const res = await request(makeApp())
-        .get('/1.0/identifiers/invalid')
-        .set('Accept', '*/*');
+      const res = await request(makeApp()).get('/1.0/identifiers/invalid').set('Accept', '*/*');
       expect(res.headers['content-type']).toMatch(/application\/did\+ld\+json/);
     });
 
@@ -114,7 +113,9 @@ describe('did-stellar-api / server', () => {
           sourcePublicKey: Keypair.random().publicKey(),
           record: {
             controller: Keypair.random().publicKey(),
-            authentication: [{ publicKeyMultibase: 'z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doY' }],
+            authentication: [
+              { publicKeyMultibase: 'z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doY' },
+            ],
             assertionMethod: [],
             keyAgreement: [],
             services: [],
@@ -141,7 +142,9 @@ describe('did-stellar-api / server', () => {
           sourcePublicKey: Keypair.random().publicKey(),
           record: {
             controller: Keypair.random().publicKey(),
-            authentication: [{ publicKeyMultibase: 'z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doY' }],
+            authentication: [
+              { publicKeyMultibase: 'z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doY' },
+            ],
             assertionMethod: [],
             keyAgreement: [],
             services: [],
@@ -162,9 +165,7 @@ describe('did-stellar-api / server', () => {
 
   describe('POST /v1/dids/stellar/submit', () => {
     it('rejects a submit body without signedXdr', async () => {
-      const res = await request(makeApp())
-        .post('/v1/dids/stellar/submit')
-        .send({});
+      const res = await request(makeApp()).post('/v1/dids/stellar/submit').send({});
       expect(res.status).toBeGreaterThanOrEqual(400);
     });
 
@@ -211,9 +212,7 @@ describe('did-stellar-api / server', () => {
 
   describe('request-id', () => {
     it('echoes an inbound X-Request-ID', async () => {
-      const res = await request(makeApp())
-        .get('/health')
-        .set('X-Request-ID', 'my-correlation-id');
+      const res = await request(makeApp()).get('/health').set('X-Request-ID', 'my-correlation-id');
       expect(res.headers['x-request-id']).toBe('my-correlation-id');
     });
 

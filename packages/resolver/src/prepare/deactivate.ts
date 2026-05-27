@@ -9,8 +9,10 @@
 import { DidError } from '../errors';
 import { bytesN16ScVal, u32ScVal } from '../internal/scval';
 import { prepareInvokeXdr, type PreparedTx } from '../internal/tx';
-import type { NetworkType } from '../network';
+
 import { resolveContext, type CommonPrepareOptions } from './common';
+
+import type { NetworkType } from '../network';
 
 export interface PrepareDeactivateDidArgs extends CommonPrepareOptions {
   readonly did: string;

@@ -6,9 +6,9 @@
  * envelope. Logs every 5xx through the request-scoped pino logger.
  */
 
-import type { ErrorRequestHandler, Request, Response } from 'express';
-
 import { httpFromUnknown } from '../lib/errors';
+
+import type { ErrorRequestHandler, Request, Response } from 'express';
 
 export const errorHandler: ErrorRequestHandler = (err, req: Request, res: Response, _next) => {
   const http = httpFromUnknown(err);
