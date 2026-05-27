@@ -10,7 +10,12 @@
   "bin": {
     "did-stellar-api": "dist/index.js"
   },
-  "files": ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "build:watch": "tsc -p tsconfig.build.json --watch",
@@ -34,13 +39,15 @@
     "helmet": "^8.1.0",
     "ioredis": "^5.10.0",
     "pino": "^9.5.0",
-    "pino-http": "^10.3.0"
+    "pino-http": "^10.3.0",
+    "swagger-ui-dist": "^5.32.6"
   },
   "devDependencies": {
     "@stellar/stellar-sdk": "^15.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/supertest": "^7.2.0",
+    "@types/swagger-ui-dist": "^3.30.6",
     "@vitest/coverage-v8": "^2.1.0",
     "rimraf": "^6.0.1",
     "supertest": "^7.2.0",

@@ -13,7 +13,7 @@ export function buildOpenApiSpec(cfg: Pick<AppConfig, 'network' | 'registryContr
   return {
     openapi: '3.1.0',
     info: {
-      title: 'did-stellar-api',
+      title: 'did.acta.build',
       version: '0.1.0',
       description:
         'Standalone HTTP service for the did:stellar v0.1 method. ' +

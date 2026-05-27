@@ -16,12 +16,20 @@ state of the monorepo.
 
 ---
 
-## [0.1.0] — Unreleased
+## [Unreleased]
 
-First public release of the `did:stellar` v0.1 implementation. Covers
-**Bloque B** (SDK) and **Bloque C** (HTTP service) of the
-[Tranche 2 plan](../TRANCHE_2_PLAN.md). Validated end-to-end against
-the canonical testnet `did-stellar-registry`
+### Added
+
+- **Swagger UI at `GET /docs`** — interactive API explorer powered by
+  `swagger-ui-dist`, served from the same Express instance. Loads the
+  existing `/openapi.json` spec. No external CDN dependency.
+
+---
+
+## [0.1.0] — 2026-05-22
+
+First public release of the `did:stellar` v0.1 implementation.
+Validated end-to-end against the canonical testnet `did-stellar-registry`
 (`CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ`).
 
 The release is structurally complete: every endpoint described in the

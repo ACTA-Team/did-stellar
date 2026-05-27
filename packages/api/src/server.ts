@@ -19,6 +19,7 @@ import { errorHandler } from './middleware/error-handler';
 import { rateLimit } from './middleware/rate-limit';
 import { requestId } from './middleware/request-id';
 import { buildOpenApiSpec } from './openapi';
+import { docsRouter } from './routes/docs';
 import { healthRouter } from './routes/health';
 import { mutationsRouter } from './routes/mutations';
 import { recordsRouter } from './routes/records';
@@ -77,10 +78,11 @@ export function buildApp(deps: BuildAppDeps): Express {
   app.use(recordsRouter({ config: deps.config }));
   app.use(mutationsRouter({ config: deps.config }));
 
-  // --- OpenAPI --------------------------------------------------------------
+  // --- OpenAPI + Swagger UI -------------------------------------------------
   app.get('/openapi.json', (_req: Request, res: Response) => {
     res.json(buildOpenApiSpec(deps.config));
   });
+  app.use(docsRouter());
 
   // --- 404 ------------------------------------------------------------------
   app.use((req: Request, res: Response) => {

@@ -6,7 +6,7 @@ v0.1 implementation — TypeScript SDK + standalone HTTP resolver.
 | Component | What it is | Link |
 |---|---|---|
 | **SDK** | `@acta-team/did-stellar` — identifier generation, RPC resolution, DIF-compatible resolver, prepare/submit XDR, proof-of-control | [![npm](https://img.shields.io/npm/v/@acta-team/did-stellar)](https://www.npmjs.com/package/@acta-team/did-stellar) |
-| **HTTP resolver** | Standalone Express service. Serves `GET /1.0/identifiers/{did}` for DIF Universal Resolver + 6 lifecycle endpoints. No auth, trust-minimised | [`did.acta.build`](https://did.acta.build) |
+| **HTTP resolver** | Standalone Express service. Serves `GET /1.0/identifiers/{did}` for DIF Universal Resolver + 6 lifecycle endpoints. No auth, trust-minimised. [Swagger UI](https://did.acta.build/docs) | [`did.acta.build`](https://did.acta.build) |
 | **Registry contract** | `did-stellar-registry` on Stellar testnet | [`CB7ATU7SF5...NNZJ`](https://stellar.expert/explorer/testnet/contract/CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ) |
 
 ## Quick start
