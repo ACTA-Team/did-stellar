@@ -83,6 +83,9 @@ export function buildApp(deps: BuildAppDeps): Express {
     res.json(buildOpenApiSpec(deps.config));
   });
   app.use(docsRouter());
+  app.get('/', (_req: Request, res: Response) => {
+    res.redirect(301, '/docs');
+  });
 
   // --- 404 ------------------------------------------------------------------
   app.use((req: Request, res: Response) => {
