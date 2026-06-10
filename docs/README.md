@@ -38,4 +38,5 @@
 
 | Doc | What it covers |
 |---|---|
+| [`internal/creation-paths.md`](./internal/creation-paths.md) | The three ways to create a `did:stellar` (acta-sdk, did-stellar SDK, raw API) and why all produce equally valid DIDs |
 | [`internal/empty-fields.md`](./internal/empty-fields.md) | Why `assertionMethod`, `keyAgreement`, and `service` may resolve empty depending on which path was used to create the DID, and how to fix it via `update()` |

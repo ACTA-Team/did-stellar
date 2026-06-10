@@ -48,6 +48,7 @@ const result = await resolver.resolve('did:stellar:testnet:znfxngsh46vkyqu6inrx4
 | [`docs/reference/api-reference.md`](./docs/reference/api-reference.md) | Every HTTP endpoint on `did.acta.build` — request/response JSON, status codes, content negotiation, rate limit headers |
 | [`docs/reference/error-codes.md`](./docs/reference/error-codes.md) | All 35 `DidErrorCode` values with contract error numbers, HTTP status codes, and descriptions |
 | [`docs/reference/configuration.md`](./docs/reference/configuration.md) | Every environment variable for `did.acta.build` with defaults, types, and validation rules |
+| [`docs/internal/creation-paths.md`](./docs/internal/creation-paths.md) | Internal note: the three ways to create a `did:stellar` and why all produce equally valid DIDs |
 | [`docs/internal/empty-fields.md`](./docs/internal/empty-fields.md) | Internal note: why `assertionMethod` / `keyAgreement` / `service` may resolve empty depending on the path used to create the DID |
 
 ## Layout

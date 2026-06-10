@@ -74,7 +74,7 @@ Sin eso, ningún verifier W3C-compliant acepta tus credenciales.
 ## Los tres caminos para crear un DID y cómo afectan los campos
 
 Cualquier `did:stellar` registrado en el contrato es **igualmente
-válido** (ver [`DID_CREATION_PATHS.md`](../../../DID_CREATION_PATHS.md)). La
+válido** (ver [`creation-paths.md`](./creation-paths.md)). La
 diferencia entre los tres caminos no es validez, es **qué campos quedan
 poblados por defecto**.
 
@@ -305,9 +305,6 @@ Importante:
 
 ## Referencias
 
-- [`DID_CREATION_PATHS.md`](../../../DID_CREATION_PATHS.md) — los tres
-  caminos para crear un DID y por qué todos producen DIDs igualmente
-  válidos.
-- [`TRANCHE_2_PLAN.md`](../../../TRANCHE_2_PLAN.md) — plan general del Tranche
-  2, separación SDK / API / dapp.
+- [`creation-paths.md`](./creation-paths.md) — los tres caminos para
+  crear un DID y por qué todos producen DIDs igualmente válidos.
 - Spec normativa `did:stellar` v0.1 — `contracts-acta/docs/did-spec/did-stellar-v0.1.md`.
