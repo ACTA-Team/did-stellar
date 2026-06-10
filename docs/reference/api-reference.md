@@ -3,7 +3,7 @@
 > **Live URL**: [`did.acta.build`](https://did.acta.build)
 > **Swagger UI**: [`did.acta.build/docs`](https://did.acta.build/docs)
 > **OpenAPI spec**: [`did.acta.build/openapi.json`](https://did.acta.build/openapi.json)
-> **Source**: [`packages/api/`](../packages/api/)
+> **Source**: [`packages/api/`](../../packages/api/)
 > **Auth**: None (trust-minimised)
 
 ## Base URL

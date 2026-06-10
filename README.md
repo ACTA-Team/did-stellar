@@ -43,11 +43,12 @@ const result = await resolver.resolve('did:stellar:testnet:znfxngsh46vkyqu6inrx4
 
 | Doc | What it covers |
 |---|---|
-| [`docs/did-stellar-method.md`](./docs/did-stellar-method.md) | How `did:stellar` works — syntax, identifier generation, on-chain storage, DID Document structure, tombstones, proof-of-control, trust model |
-| [`docs/sdk-reference.md`](./docs/sdk-reference.md) | Every export of `@acta-team/did-stellar` — functions, types, constants, code examples for every operation |
-| [`docs/api-reference.md`](./docs/api-reference.md) | Every HTTP endpoint on `did.acta.build` — request/response JSON, status codes, content negotiation, rate limit headers |
-| [`docs/error-codes.md`](./docs/error-codes.md) | All 35 `DidErrorCode` values with contract error numbers, HTTP status codes, and descriptions |
-| [`docs/configuration.md`](./docs/configuration.md) | Every environment variable for `did.acta.build` with defaults, types, and validation rules |
+| [`docs/method/did-stellar-method.md`](./docs/method/did-stellar-method.md) | How `did:stellar` works — syntax, identifier generation, on-chain storage, DID Document structure, tombstones, proof-of-control, trust model |
+| [`docs/reference/sdk-reference.md`](./docs/reference/sdk-reference.md) | Every export of `@acta-team/did-stellar` — functions, types, constants, code examples for every operation |
+| [`docs/reference/api-reference.md`](./docs/reference/api-reference.md) | Every HTTP endpoint on `did.acta.build` — request/response JSON, status codes, content negotiation, rate limit headers |
+| [`docs/reference/error-codes.md`](./docs/reference/error-codes.md) | All 35 `DidErrorCode` values with contract error numbers, HTTP status codes, and descriptions |
+| [`docs/reference/configuration.md`](./docs/reference/configuration.md) | Every environment variable for `did.acta.build` with defaults, types, and validation rules |
+| [`docs/internal/empty-fields.md`](./docs/internal/empty-fields.md) | Internal note: why `assertionMethod` / `keyAgreement` / `service` may resolve empty depending on the path used to create the DID |
 
 ## Layout
 

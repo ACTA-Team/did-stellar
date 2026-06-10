@@ -2,7 +2,7 @@
 
 > **npm**: [`@acta-team/did-stellar`](https://www.npmjs.com/package/@acta-team/did-stellar)
 > **Version**: `0.1.0`
-> **Source**: [`packages/resolver/`](../packages/resolver/)
+> **Source**: [`packages/resolver/`](../../packages/resolver/)
 
 ## Install
 
