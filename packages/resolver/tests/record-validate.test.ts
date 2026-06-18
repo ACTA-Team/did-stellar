@@ -74,15 +74,29 @@ describe('validateDidRecordInput', () => {
     ).toThrow();
   });
 
-  it('rejects duplicate keys across relationships', () => {
-    try {
+  it('allows the same key across distinct verification relationships', () => {
+    // Reusing one key across `authentication` and `assertionMethod` is
+    // the idiomatic shape for an issuer DID: one Ed25519 key proves
+    // control of the DID AND signs the credentials it issues.
+    expect(() =>
       validateDidRecordInput(
         minimal({
           assertionMethod: [{ publicKeyMultibase: KEY_AUTH }],
         })
+      )
+    ).not.toThrow();
+  });
+
+  it('rejects duplicate keys within the same relationship', () => {
+    try {
+      validateDidRecordInput(
+        minimal({
+          assertionMethod: [{ publicKeyMultibase: KEY_ASSERT }, { publicKeyMultibase: KEY_ASSERT }],
+        })
       );
       throw new Error('should have thrown');
     } catch (err) {
+      expect(DidError.is(err)).toBe(true);
       expect((err as DidError).code).toBe('duplicate_key');
     }
   });

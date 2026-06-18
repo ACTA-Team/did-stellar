@@ -21,7 +21,7 @@ Soroban contract (values 1–20):
 | `invalid_assertion_key_count` | 6 | 400 | `assertionMethod` count exceeds 3 |
 | `invalid_key_agreement_count` | 7 | 400 | `keyAgreement` count exceeds 1 |
 | `invalid_service_count` | 8 | 400 | `services` count exceeds 3 |
-| `duplicate_key` | 9 | 400 | Same `publicKeyMultibase` appears twice (within or across relationships) |
+| `duplicate_key` | 9 | 400 | Same `publicKeyMultibase` appears more than once **within the same verification relationship**. Reusing the same key across distinct relationships (e.g. `authentication` and `assertionMethod`) is allowed. |
 | `key_too_long` | 10 | 413 | `publicKeyMultibase` exceeds 128 chars |
 | `key_empty` | 11 | 400 | `publicKeyMultibase` is empty string |
 | `service_type_too_long` | 12 | 413 | `serviceType` exceeds 64 chars |

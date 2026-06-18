@@ -77,18 +77,16 @@ export function validateDidRecordInput(input: DidRecordInput): void {
   }
 
   // --- Per-key validation + intra-relationship duplicates ---
+  // The same publicKeyMultibase MAY appear across distinct verification
+  // relationships (e.g. `authentication` and `assertionMethod`): each
+  // relationship gets its own fragment ID in the emitted DID Document, so
+  // W3C DID Core 1.1 §3.2's uniqueness requirement on `id` is satisfied
+  // even when the underlying key material is reused. This mirrors the
+  // contract's `validate_record` after the cross-relation check was
+  // removed during the v0.1 audit.
   validateKeysNoDuplicates(input.authentication);
   validateKeysNoDuplicates(input.assertionMethod);
   validateKeysNoDuplicates(input.keyAgreement);
-
-  // --- Cross-relationship duplicates ---
-  // Mirrors the contract: the same Multikey string must not appear in two
-  // different verification relationships, because the W3C DID Document
-  // emitted from the record would otherwise have duplicate
-  // verificationMethod IDs.
-  crossRelationDuplicates(input.authentication, input.assertionMethod);
-  crossRelationDuplicates(input.authentication, input.keyAgreement);
-  crossRelationDuplicates(input.assertionMethod, input.keyAgreement);
 
   // --- Services ---
   for (const s of input.services) validateService(s);
@@ -127,19 +125,6 @@ function validateKeysNoDuplicates(keys: readonly DidKey[]): void {
       );
     }
     seen.add(k.publicKeyMultibase);
-  }
-}
-
-function crossRelationDuplicates(a: readonly DidKey[], b: readonly DidKey[]): void {
-  for (const ka of a) {
-    for (const kb of b) {
-      if (ka.publicKeyMultibase === kb.publicKeyMultibase) {
-        throw new DidError(
-          'duplicate_key',
-          `publicKeyMultibase appears in more than one verification relationship: ${ka.publicKeyMultibase}`
-        );
-      }
-    }
   }
 }
 

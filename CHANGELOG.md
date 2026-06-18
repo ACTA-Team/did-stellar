@@ -18,6 +18,19 @@ state of the monorepo.
 
 ## [Unreleased]
 
+### Changed
+
+- **Validation: same key allowed across distinct verification
+  relationships.** `validateDidRecordInput` no longer rejects records
+  where the same `publicKeyMultibase` appears in more than one
+  relationship (e.g. one Ed25519 key used in both `authentication` and
+  `assertionMethod`, which is the idiomatic shape for an issuer DID).
+  Duplicates *within* the same relationship still raise `duplicate_key`.
+  This aligns the SDK with the post-audit `did-stellar-registry`
+  contract, which removed the equivalent rule because W3C DID Core 1.1
+  §3.2 only requires uniqueness on `verificationMethod.id`, not on key
+  material. Closes audit finding **A1**.
+
 ### Added
 
 - **Swagger UI at `GET /docs`** — interactive API explorer powered by
