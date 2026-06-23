@@ -20,8 +20,10 @@ First public release. Implements every endpoint described in
   `RESOLVER_CACHE_TTL_SECONDS` (default 30) in Redis or in-memory.
 - **`GET /v1/dids/stellar/{did}`** — raw on-chain `DidRecord`.
 - **`POST /v1/dids/stellar`** — register, prepare or submit mode.
-- **`PATCH /v1/dids/stellar/{did}`** — update, prepare or submit mode
-  (requires `expectedVersion`).
+- **`POST /v1/dids/stellar/{did}/update`** — update, prepare or submit
+  mode (requires `expectedVersion`). Renamed from `PATCH
+  /v1/dids/stellar/{did}` so every mutation follows the same
+  `POST /…/{action}` pattern and the URL is self-describing in Swagger.
 - **`POST /v1/dids/stellar/{did}/transfer`** — transfer controller.
 - **`POST /v1/dids/stellar/{did}/deactivate`** — irreversible deactivation.
 - **`POST /v1/dids/stellar/submit`** — submit any signed XDR.

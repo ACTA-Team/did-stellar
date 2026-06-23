@@ -10,10 +10,17 @@
  * Routes:
  *
  *   POST   /v1/dids/stellar                                  → register
- *   PATCH  /v1/dids/stellar/:did                             → update
+ *   POST   /v1/dids/stellar/:did/update                      → update
  *   POST   /v1/dids/stellar/:did/transfer                    → transfer_controller
  *   POST   /v1/dids/stellar/:did/deactivate                  → deactivate
  *   POST   /v1/dids/stellar/submit                           → submit-only
+ *
+ * Note: every mutation uses POST with an explicit action suffix
+ * (`/update`, `/transfer`, `/deactivate`) so each operation is
+ * self-describing in Swagger UI and DIF tooling. The earlier
+ * `PATCH /v1/dids/stellar/:did` was renamed because it shared the URL
+ * with the `GET` raw-record read, which was ambiguous in API
+ * explorers.
  *
  * No auth: the contract enforces `controller.require_auth()`. The HTTP
  * layer never holds keys; it never sees the signed XDR's controller in
@@ -69,8 +76,8 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
     });
   });
 
-  // --- PATCH /v1/dids/stellar/:did -----------------------------------------
-  router.patch('/v1/dids/stellar/:did', async (req, res) => {
+  // --- POST /v1/dids/stellar/:did/update -----------------------------------
+  router.post('/v1/dids/stellar/:did/update', async (req, res) => {
     await handle(req, res, async () => {
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr !== null) {

@@ -59,7 +59,7 @@ export function buildApp(deps: BuildAppDeps): Express {
   app.use(
     cors({
       origin: deps.config.corsOrigins === '*' ? true : [...deps.config.corsOrigins],
-      methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+      methods: ['GET', 'POST', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Accept', 'X-Request-ID'],
       exposedHeaders: ['X-Request-ID', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
     })

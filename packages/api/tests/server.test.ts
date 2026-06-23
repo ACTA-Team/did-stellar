@@ -133,10 +133,10 @@ describe('did-stellar-api / server', () => {
     });
   });
 
-  describe('PATCH /v1/dids/stellar/:did', () => {
+  describe('POST /v1/dids/stellar/:did/update', () => {
     it('rejects expectedVersion < 1', async () => {
       const res = await request(makeApp())
-        .patch('/v1/dids/stellar/did:stellar:testnet:aaaqeayeaudaocajbifqydiob4')
+        .post('/v1/dids/stellar/did:stellar:testnet:aaaqeayeaudaocajbifqydiob4/update')
         .send({
           expectedVersion: 0,
           sourcePublicKey: Keypair.random().publicKey(),
@@ -156,7 +156,7 @@ describe('did-stellar-api / server', () => {
 
     it('rejects an invalid DID in the path', async () => {
       const res = await request(makeApp())
-        .patch('/v1/dids/stellar/not-a-did')
+        .post('/v1/dids/stellar/not-a-did/update')
         .send({ expectedVersion: 1, sourcePublicKey: Keypair.random().publicKey(), record: {} });
       expect(res.status).toBe(400);
       expect(res.body.code).toBe('did_invalid');

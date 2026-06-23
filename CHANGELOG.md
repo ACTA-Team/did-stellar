@@ -18,6 +18,21 @@ state of the monorepo.
 
 ## [Unreleased]
 
+### Changed (BREAKING — HTTP API)
+
+- **Renamed update endpoint:**
+  `PATCH /v1/dids/stellar/{did}` → **`POST /v1/dids/stellar/{did}/update`**.
+  Reason: the previous route shared its URL with the `GET` raw-record
+  read, which was ambiguous in Swagger UI and confusing for integrators
+  scanning the API surface. Every mutation now follows the same
+  `POST /v1/dids/stellar/{did}/<action>` pattern (`/update`,
+  `/transfer`, `/deactivate`) so each operation is self-describing.
+  - Request body and response shape are unchanged — only the verb and
+    URL changed.
+  - CORS `methods` allowlist drops `PATCH`.
+  - Existing integrators using `PATCH` must switch to
+    `POST /v1/dids/stellar/{did}/update`.
+
 ### Changed
 
 - **Validation: same key allowed across distinct verification
@@ -262,8 +277,9 @@ exports for `./resolver` (DIF driver, minimal bundle) and `./hooks`
 - **`POST /v1/dids/stellar`** — register. Prepare mode (body
   has `did`, `record`, `sourcePublicKey` → returns unsigned
   XDR) or submit mode (body has `signedXdr` → submits + polls).
-- **`PATCH /v1/dids/stellar/{did}`** — update; requires
-  `expectedVersion`.
+- **`POST /v1/dids/stellar/{did}/update`** — update; requires
+  `expectedVersion`. (Renamed from `PATCH /v1/dids/stellar/{did}` in
+  the `[Unreleased]` entry above.)
 - **`POST /v1/dids/stellar/{did}/transfer`** — transfer
   controller; requires `expectedVersion` + `newController`.
 - **`POST /v1/dids/stellar/{did}/deactivate`** — irreversible.

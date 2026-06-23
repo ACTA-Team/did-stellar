@@ -62,7 +62,9 @@ export function buildOpenApiSpec(cfg: Pick<AppConfig, 'network' | 'registryContr
             '404': errorResponse('did_not_found'),
           },
         },
-        patch: {
+      },
+      '/v1/dids/stellar/{did}/update': {
+        post: {
           summary: 'Update a DidRecord (prepare or submit)',
           parameters: [didParam()],
           requestBody: jsonBody({

@@ -173,7 +173,7 @@ reading `version` before an update or inspecting `controller` directly.
 
 ---
 
-### `PATCH /v1/dids/stellar/{did}` — Update DID
+### `POST /v1/dids/stellar/{did}/update` — Update DID
 
 **Prepare mode**:
 ```json
@@ -185,6 +185,12 @@ reading `version` before an update or inspecting `controller` directly.
 ```
 
 Requires `expectedVersion` to match on-chain. Returns `409 version_mismatch` if stale.
+
+> **Naming note:** previous versions exposed this as
+> `PATCH /v1/dids/stellar/{did}`. It was renamed to
+> `POST /v1/dids/stellar/{did}/update` so every mutation follows the
+> same `POST /…/{action}` pattern and Swagger UI shows distinct URLs
+> per operation.
 
 ---
 
