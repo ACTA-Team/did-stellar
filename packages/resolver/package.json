@@ -1,6 +1,6 @@
 {
   "name": "@acta-team/did-stellar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official TypeScript SDK for the did:stellar v0.1 method. DIF did-resolver compatible, prepare/submit XDR helpers, and W3C-compliant DID Document construction.",
   "type": "commonjs",
   "main": "dist/index.js",

@@ -4,18 +4,22 @@ All notable changes to `@acta-team/did-stellar` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] — Unreleased
+## [0.1.1]
+
+### Added
+
+- `DEFAULT_REGISTRY_CONTRACT_IDS.mainnet` is now populated with the mainnet
+  `did-stellar-registry` (`CD6LSWW5ZSXOO5WAIHKQLQ262TW7BPI37PNEVMMA273BAPC65NN2AYXQ`,
+  v0.2.0), so `resolveDidStellar`, `readDidRecord`, and the `prepare*Xdr`
+  helpers work on mainnet without an explicit `registryContractId` override.
+  Published 0.1.0 shipped an empty mainnet default, which raised
+  "no default registry contract is configured for network mainnet".
+
+## [0.1.0]
 
 First public release. Implements the full `did:stellar` v0.1 method
 surface against `did-stellar-registry` v0.1.0 (testnet contract
 `CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ`).
-
-### Added (mainnet registry)
-
-- `DEFAULT_REGISTRY_CONTRACT_IDS.mainnet` is now populated with the mainnet
-  `did-stellar-registry` (`CD6LSWW5ZSXOO5WAIHKQLQ262TW7BPI37PNEVMMA273BAPC65NN2AYXQ`),
-  so `resolveDidStellar` / `readDidRecord` work on mainnet without an explicit
-  `registryContractId` override.
 
 ### Added
 
