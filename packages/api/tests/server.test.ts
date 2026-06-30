@@ -18,14 +18,23 @@ import { buildApp } from '../src/server';
 import type { AppConfig } from '../src/config';
 
 const TESTNET_CONTRACT = 'CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ';
+const MAINNET_CONTRACT = 'CD6LSWW5ZSXOO5WAIHKQLQ262TW7BPI37PNEVMMA273BAPC65NN2AYXQ';
 
 function makeConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   const base: AppConfig = {
     port: 0,
-    network: 'testnet',
-    rpcUrl: 'https://soroban-testnet.stellar.org',
-    registryContractId: TESTNET_CONTRACT,
-    allowHttp: false,
+    networks: {
+      testnet: {
+        rpcUrl: 'https://soroban-testnet.stellar.org',
+        registryContractId: TESTNET_CONTRACT,
+        allowHttp: false,
+      },
+      mainnet: {
+        rpcUrl: 'https://mainnet.sorobanrpc.com',
+        registryContractId: MAINNET_CONTRACT,
+        allowHttp: false,
+      },
+    },
     redisUrl: null,
     resolverCacheTtlSeconds: 30,
     rateLimit: { max: 1000, windowSeconds: 60 },
@@ -53,8 +62,10 @@ describe('did-stellar-api / server', () => {
         status: 'ok',
         service: 'did-stellar-api',
         method: 'did:stellar',
-        network: 'testnet',
-        registryContractId: TESTNET_CONTRACT,
+        networks: {
+          testnet: TESTNET_CONTRACT,
+          mainnet: MAINNET_CONTRACT,
+        },
       });
     });
   });
@@ -105,8 +116,24 @@ describe('did-stellar-api / server', () => {
       expect(res.status).toBeGreaterThanOrEqual(400);
     });
 
-    it('rejects a register body with wrong network', async () => {
-      const res = await request(makeApp({ network: 'testnet' }))
+    it('rejects a register on a network that is not configured', async () => {
+      // mainnet left unconfigured (empty registry) on this instance.
+      const res = await request(
+        makeApp({
+          networks: {
+            testnet: {
+              rpcUrl: 'https://soroban-testnet.stellar.org',
+              registryContractId: TESTNET_CONTRACT,
+              allowHttp: false,
+            },
+            mainnet: {
+              rpcUrl: 'https://mainnet.sorobanrpc.com',
+              registryContractId: '',
+              allowHttp: false,
+            },
+          },
+        })
+      )
         .post('/v1/dids/stellar')
         .send({
           did: 'did:stellar:mainnet:aaaqeayeaudaocajbifqydiob4',
@@ -172,9 +199,17 @@ describe('did-stellar-api / server', () => {
     it('rejects a malformed signedXdr', async () => {
       const res = await request(makeApp())
         .post('/v1/dids/stellar/submit')
-        .send({ signedXdr: 'not-xdr' });
+        .send({ signedXdr: 'not-xdr', network: 'testnet' });
       expect(res.status).toBe(502);
       expect(res.body.code).toBe('tx_submission_failed');
+    });
+
+    it('rejects a submit body without a network', async () => {
+      const res = await request(makeApp())
+        .post('/v1/dids/stellar/submit')
+        .send({ signedXdr: 'not-xdr' });
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('network_invalid');
     });
   });
 

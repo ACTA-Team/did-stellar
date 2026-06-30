@@ -12,7 +12,7 @@ import { Router } from 'express';
 
 import type { AppConfig } from '../config';
 
-export function healthRouter(cfg: Pick<AppConfig, 'network' | 'registryContractId'>): Router {
+export function healthRouter(cfg: Pick<AppConfig, 'networks'>): Router {
   const router = Router();
   const startedAt = new Date().toISOString();
 
@@ -21,8 +21,11 @@ export function healthRouter(cfg: Pick<AppConfig, 'network' | 'registryContractI
       status: 'ok',
       service: 'did-stellar-api',
       method: 'did:stellar',
-      network: cfg.network,
-      registryContractId: cfg.registryContractId,
+      // Multi-network: the resolver routes each DID by its embedded network.
+      networks: {
+        testnet: cfg.networks.testnet.registryContractId || null,
+        mainnet: cfg.networks.mainnet.registryContractId || null,
+      },
       startedAt,
     });
   });

@@ -9,7 +9,7 @@
 
 import type { AppConfig } from './config';
 
-export function buildOpenApiSpec(cfg: Pick<AppConfig, 'network' | 'registryContractId'>) {
+export function buildOpenApiSpec(cfg: Pick<AppConfig, 'networks'>) {
   return {
     openapi: '3.1.0',
     info: {
@@ -106,8 +106,10 @@ export function buildOpenApiSpec(cfg: Pick<AppConfig, 'network' | 'registryContr
       },
     },
     'x-acta': {
-      network: cfg.network,
-      registryContractId: cfg.registryContractId,
+      networks: {
+        testnet: cfg.networks.testnet.registryContractId || null,
+        mainnet: cfg.networks.mainnet.registryContractId || null,
+      },
       method: 'did:stellar',
       methodSpec:
         'https://github.com/ACTA-Team/contracts-acta/blob/main/docs/did-spec/did-stellar-v0.1.md',

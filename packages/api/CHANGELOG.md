@@ -9,6 +9,24 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 First public release. Implements every endpoint described in
 [`TRANCHE_2_PLAN.md`](../../../TRANCHE_2_PLAN.md) §4.
 
+### Added (multi-network)
+
+- The service is now **multi-network**: a single deployment serves both
+  `testnet` and `mainnet`, routing each request by the network embedded in the
+  `did:stellar:{network}:...` identifier (resolver, raw-record and lifecycle
+  routes alike). For submit-only requests with no DID in the path
+  (`POST /v1/dids/stellar/submit` and register-submit), the body must include
+  `network: "testnet" | "mainnet"`.
+- Config is per-network (`config.networks[network]`): `DID_REGISTRY_CONTRACT_ID_TESTNET`
+  / `_MAINNET` and `STELLAR_RPC_URL_TESTNET` / `_MAINNET`, each falling back to
+  the SDK default. The legacy single-network envs (`NETWORK_TYPE`,
+  `DID_REGISTRY_CONTRACT_ID`, `STELLAR_RPC_URL`) remain honoured as a fallback
+  for the named network, so existing deployments keep working.
+- A request for a network without a configured registry returns a clean error
+  (`501` on resolve, `network_invalid` on mutations) instead of querying the
+  wrong contract.
+- `GET /health` and the OpenAPI `x-acta` block now report both networks.
+
 ### Added
 
 - **`GET /health`** — liveness probe; no external calls.

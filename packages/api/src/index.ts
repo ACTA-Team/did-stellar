@@ -32,9 +32,10 @@ async function main(): Promise<void> {
     logger.info(
       {
         port: config.port,
-        network: config.network,
-        registryContractId: config.registryContractId,
-        rpcUrl: config.rpcUrl,
+        networks: {
+          testnet: config.networks.testnet.registryContractId || null,
+          mainnet: config.networks.mainnet.registryContractId || null,
+        },
         cache: config.redisUrl ? 'redis' : 'in-memory',
       },
       'did-stellar-api ready'

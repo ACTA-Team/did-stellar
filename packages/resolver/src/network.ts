@@ -19,8 +19,8 @@ export const DEFAULT_RPC_URLS: Readonly<Record<NetworkType, string>> = Object.fr
 
 /** Canonical `did-stellar-registry` contract IDs deployed by the ACTA team. */
 export const DEFAULT_REGISTRY_CONTRACT_IDS: Readonly<Record<NetworkType, string>> = Object.freeze({
-  // Filled in by Bloque E (Mainnet RC).
-  mainnet: '',
+  // Mainnet deploy: see contracts-acta/docs/deployments/mainnet.md
+  mainnet: 'CD6LSWW5ZSXOO5WAIHKQLQ262TW7BPI37PNEVMMA273BAPC65NN2AYXQ',
   // Tranche 1 deployment: see contracts-acta/docs/deployments/testnet.md
   testnet: 'CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ',
 });

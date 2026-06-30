@@ -16,9 +16,8 @@ import {
 } from '@acta-team/did-stellar';
 import { Router, type Request, type Response } from 'express';
 
+import { networkConfigFor, type AppConfig } from '../config';
 import { httpFromDidError } from '../lib/errors';
-
-import type { AppConfig } from '../config';
 
 export interface RecordsRouterDeps {
   readonly config: AppConfig;
@@ -35,19 +34,20 @@ export function recordsRouter(deps: RecordsRouterDeps): Router {
       return;
     }
     const parsed = parseDidStellar(rawDid);
-    if (parsed.network !== deps.config.network) {
-      res.status(400).json({
-        code: 'network_invalid',
-        message: `service is configured for ${deps.config.network}, got DID on ${parsed.network}`,
+    const netCfg = networkConfigFor(deps.config, parsed.network);
+    if (!netCfg) {
+      res.status(501).json({
+        code: 'network_unavailable',
+        message: `network not configured on this service: ${parsed.network}`,
       });
       return;
     }
 
     try {
-      const rpcServer = buildRpcServer(deps.config.rpcUrl, { allowHttp: deps.config.allowHttp });
+      const rpcServer = buildRpcServer(netCfg.rpcUrl, { allowHttp: netCfg.allowHttp });
       const record = await readDidRecord({
         rpcServer,
-        registryContractId: deps.config.registryContractId,
+        registryContractId: netCfg.registryContractId,
         didIdBytes: parsed.didIdBytes,
       });
       if (!record) {

@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadConfig } from '../src/config';
+import { loadConfig, networkConfigFor } from '../src/config';
 
 const TESTNET_CONTRACT = 'CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ';
+const MAINNET_CONTRACT = 'CD6LSWW5ZSXOO5WAIHKQLQ262TW7BPI37PNEVMMA273BAPC65NN2AYXQ';
 
 describe('loadConfig', () => {
-  it('returns defaults for testnet when env is empty', () => {
+  it('returns defaults for both networks when env is empty', () => {
     const cfg = loadConfig({});
-    expect(cfg.network).toBe('testnet');
     expect(cfg.port).toBe(8080);
-    expect(cfg.registryContractId).toBe(TESTNET_CONTRACT);
+    expect(cfg.networks.testnet.registryContractId).toBe(TESTNET_CONTRACT);
+    expect(cfg.networks.mainnet.registryContractId).toBe(MAINNET_CONTRACT);
+    expect(cfg.networks.testnet.allowHttp).toBe(false);
     expect(cfg.resolverCacheTtlSeconds).toBe(30);
     expect(cfg.rateLimit.max).toBe(120);
     expect(cfg.corsOrigins).toBe('*');
@@ -20,7 +22,6 @@ describe('loadConfig', () => {
   it('honours overrides', () => {
     const cfg = loadConfig({
       PORT: '9090',
-      NETWORK_TYPE: 'testnet',
       RATE_LIMIT_MAX: '50',
       RATE_LIMIT_WINDOW_SECONDS: '30',
       CORS_ORIGINS: 'https://verifier.example.com,https://wallet.example.com',
@@ -28,14 +29,11 @@ describe('loadConfig', () => {
     });
     expect(cfg.port).toBe(9090);
     expect(cfg.rateLimit).toEqual({ max: 50, windowSeconds: 30 });
-    expect(cfg.corsOrigins).toEqual([
-      'https://verifier.example.com',
-      'https://wallet.example.com',
-    ]);
+    expect(cfg.corsOrigins).toEqual(['https://verifier.example.com', 'https://wallet.example.com']);
     expect(cfg.logLevel).toBe('warn');
   });
 
-  it('rejects an invalid network', () => {
+  it('rejects an invalid NETWORK_TYPE', () => {
     expect(() => loadConfig({ NETWORK_TYPE: 'pubnet' })).toThrow(/mainnet.*testnet/);
   });
 
@@ -44,22 +42,35 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ RATE_LIMIT_MAX: '-3' })).toThrow();
   });
 
-  it('rejects mainnet without an explicit contract ID', () => {
-    expect(() => loadConfig({ NETWORK_TYPE: 'mainnet' })).toThrow(/DID_REGISTRY_CONTRACT_ID/);
+  it('honours per-network registry overrides', () => {
+    const cfg = loadConfig({
+      DID_REGISTRY_CONTRACT_ID_TESTNET: 'CBTESTOVERRIDE',
+      DID_REGISTRY_CONTRACT_ID_MAINNET: 'CBMAINOVERRIDE',
+    });
+    expect(cfg.networks.testnet.registryContractId).toBe('CBTESTOVERRIDE');
+    expect(cfg.networks.mainnet.registryContractId).toBe('CBMAINOVERRIDE');
   });
 
-  it('accepts mainnet when DID_REGISTRY_CONTRACT_ID is provided', () => {
+  it('honours the legacy single-network env for the NETWORK_TYPE network', () => {
     const cfg = loadConfig({
       NETWORK_TYPE: 'mainnet',
-      DID_REGISTRY_CONTRACT_ID: 'CBSOMETHINGSOMETHING',
+      DID_REGISTRY_CONTRACT_ID: 'CBLEGACYMAIN',
     });
-    expect(cfg.network).toBe('mainnet');
-    expect(cfg.registryContractId).toBe('CBSOMETHINGSOMETHING');
+    expect(cfg.networks.mainnet.registryContractId).toBe('CBLEGACYMAIN');
+    // The other network keeps its default.
+    expect(cfg.networks.testnet.registryContractId).toBe(TESTNET_CONTRACT);
   });
 
-  it('marks allowHttp=true when STELLAR_RPC_URL is http://', () => {
-    const cfg = loadConfig({ STELLAR_RPC_URL: 'http://localhost:8000/soroban' });
-    expect(cfg.allowHttp).toBe(true);
+  it('marks allowHttp=true for a network with an http rpc url', () => {
+    const cfg = loadConfig({ STELLAR_RPC_URL_TESTNET: 'http://localhost:8000/soroban' });
+    expect(cfg.networks.testnet.allowHttp).toBe(true);
+    expect(cfg.networks.mainnet.allowHttp).toBe(false);
+  });
+
+  it('networkConfigFor returns the per-network config when configured', () => {
+    const cfg = loadConfig({});
+    expect(networkConfigFor(cfg, 'testnet')?.registryContractId).toBe(TESTNET_CONTRACT);
+    expect(networkConfigFor(cfg, 'mainnet')?.registryContractId).toBe(MAINNET_CONTRACT);
   });
 
   it('rejects an invalid LOG_LEVEL', () => {

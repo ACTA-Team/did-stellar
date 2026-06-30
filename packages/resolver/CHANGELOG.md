@@ -10,6 +10,13 @@ First public release. Implements the full `did:stellar` v0.1 method
 surface against `did-stellar-registry` v0.1.0 (testnet contract
 `CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ`).
 
+### Added (mainnet registry)
+
+- `DEFAULT_REGISTRY_CONTRACT_IDS.mainnet` is now populated with the mainnet
+  `did-stellar-registry` (`CD6LSWW5ZSXOO5WAIHKQLQ262TW7BPI37PNEVMMA273BAPC65NN2AYXQ`),
+  so `resolveDidStellar` / `readDidRecord` work on mainnet without an explicit
+  `registryContractId` override.
+
 ### Added
 
 - **Identifier primitives** — `generateDidId`, `encodeDidId`,

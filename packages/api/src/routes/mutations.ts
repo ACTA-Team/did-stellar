@@ -29,6 +29,7 @@
 
 import {
   DidError,
+  isNetworkType,
   isValidDidStellar,
   parseDidStellar,
   prepareDeactivateDidXdr,
@@ -41,9 +42,8 @@ import {
 } from '@acta-team/did-stellar';
 import { Router, type Request, type Response } from 'express';
 
+import { networkConfigFor, type AppConfig, type NetworkConfig } from '../config';
 import { httpFromDidError } from '../lib/errors';
-
-import type { AppConfig } from '../config';
 
 export interface MutationsRouterDeps {
   readonly config: AppConfig;
@@ -57,16 +57,19 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
     await handle(req, res, async () => {
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr !== null) {
-        return submit(signedXdr, deps.config);
+        // No DID in the path on register-submit: the network is taken from the body.
+        const network = networkFromBody(req.body);
+        return submit(signedXdr, netCfgOrThrow(deps.config, network), network);
       }
-      const { did, record, sourcePublicKey } = parseRegisterBody(req.body, deps.config.network);
+      const { did, record, sourcePublicKey, network } = parseRegisterBody(req.body);
+      const netCfg = netCfgOrThrow(deps.config, network);
       const prepared = await prepareRegisterDidXdr({
         did,
         record,
         sourcePublicKey,
-        rpcUrl: deps.config.rpcUrl,
-        registryContractId: deps.config.registryContractId,
-        allowHttp: deps.config.allowHttp,
+        rpcUrl: netCfg.rpcUrl,
+        registryContractId: netCfg.registryContractId,
+        allowHttp: netCfg.allowHttp,
       });
       return {
         xdr: prepared.xdr,
@@ -79,23 +82,21 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
   // --- POST /v1/dids/stellar/:did/update -----------------------------------
   router.post('/v1/dids/stellar/:did/update', async (req, res) => {
     await handle(req, res, async () => {
+      const { did, network } = requireDid(req);
+      const netCfg = netCfgOrThrow(deps.config, network);
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr !== null) {
-        return submit(signedXdr, deps.config);
+        return submit(signedXdr, netCfg, network);
       }
-      const did = requireDid(req, deps.config.network);
-      const { expectedVersion, record, sourcePublicKey } = parseUpdateBody(
-        req.body,
-        deps.config.network
-      );
+      const { expectedVersion, record, sourcePublicKey } = parseUpdateBody(req.body);
       const prepared = await prepareUpdateDidXdr({
         did,
         expectedVersion,
         nextRecord: record,
         sourcePublicKey,
-        rpcUrl: deps.config.rpcUrl,
-        registryContractId: deps.config.registryContractId,
-        allowHttp: deps.config.allowHttp,
+        rpcUrl: netCfg.rpcUrl,
+        registryContractId: netCfg.registryContractId,
+        allowHttp: netCfg.allowHttp,
       });
       return {
         xdr: prepared.xdr,
@@ -108,20 +109,21 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
   // --- POST /v1/dids/stellar/:did/transfer ---------------------------------
   router.post('/v1/dids/stellar/:did/transfer', async (req, res) => {
     await handle(req, res, async () => {
+      const { did, network } = requireDid(req);
+      const netCfg = netCfgOrThrow(deps.config, network);
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr !== null) {
-        return submit(signedXdr, deps.config);
+        return submit(signedXdr, netCfg, network);
       }
-      const did = requireDid(req, deps.config.network);
       const { expectedVersion, newController, sourcePublicKey } = parseTransferBody(req.body);
       const prepared = await prepareTransferControllerXdr({
         did,
         expectedVersion,
         newController,
         sourcePublicKey,
-        rpcUrl: deps.config.rpcUrl,
-        registryContractId: deps.config.registryContractId,
-        allowHttp: deps.config.allowHttp,
+        rpcUrl: netCfg.rpcUrl,
+        registryContractId: netCfg.registryContractId,
+        allowHttp: netCfg.allowHttp,
       });
       return {
         xdr: prepared.xdr,
@@ -134,19 +136,20 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
   // --- POST /v1/dids/stellar/:did/deactivate -------------------------------
   router.post('/v1/dids/stellar/:did/deactivate', async (req, res) => {
     await handle(req, res, async () => {
+      const { did, network } = requireDid(req);
+      const netCfg = netCfgOrThrow(deps.config, network);
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr !== null) {
-        return submit(signedXdr, deps.config);
+        return submit(signedXdr, netCfg, network);
       }
-      const did = requireDid(req, deps.config.network);
       const { expectedVersion, sourcePublicKey } = parseDeactivateBody(req.body);
       const prepared = await prepareDeactivateDidXdr({
         did,
         expectedVersion,
         sourcePublicKey,
-        rpcUrl: deps.config.rpcUrl,
-        registryContractId: deps.config.registryContractId,
-        allowHttp: deps.config.allowHttp,
+        rpcUrl: netCfg.rpcUrl,
+        registryContractId: netCfg.registryContractId,
+        allowHttp: netCfg.allowHttp,
       });
       return {
         xdr: prepared.xdr,
@@ -163,7 +166,8 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
       if (signedXdr === null) {
         throw new DidError('unknown', 'submit body must include signedXdr: string');
       }
-      return submit(signedXdr, deps.config);
+      const network = networkFromBody(req.body);
+      return submit(signedXdr, netCfgOrThrow(deps.config, network), network);
     });
   });
 
@@ -188,54 +192,69 @@ async function handle<T>(req: Request, res: Response, fn: () => Promise<T>): Pro
   }
 }
 
-async function submit(signedXdr: string, cfg: AppConfig): Promise<{ txId: string }> {
+async function submit(
+  signedXdr: string,
+  netCfg: NetworkConfig,
+  network: NetworkType
+): Promise<{ txId: string }> {
   const result = await submitSignedXdr({
     signedXdr,
-    network: cfg.network,
-    rpcUrl: cfg.rpcUrl,
-    allowHttp: cfg.allowHttp,
+    network,
+    rpcUrl: netCfg.rpcUrl,
+    allowHttp: netCfg.allowHttp,
   });
   return { txId: result.txId };
 }
 
-function requireDid(req: Request, network: NetworkType): string {
+/** Select a network's config, or throw a typed error when it isn't configured. */
+function netCfgOrThrow(cfg: AppConfig, network: NetworkType): NetworkConfig {
+  const netCfg = networkConfigFor(cfg, network);
+  if (!netCfg) {
+    throw new DidError('network_invalid', `network not configured on this service: ${network}`);
+  }
+  return netCfg;
+}
+
+/** Read the target network from a submit-only body (no DID in the path). */
+function networkFromBody(body: unknown): NetworkType {
+  if (
+    isPlainObject(body) &&
+    typeof body['network'] === 'string' &&
+    isNetworkType(body['network'])
+  ) {
+    return body['network'];
+  }
+  throw new DidError(
+    'network_invalid',
+    'submit body must include network: "testnet" | "mainnet" (no DID in the path to infer it from)'
+  );
+}
+
+function requireDid(req: Request): { did: string; network: NetworkType } {
   const param = req.params['did'];
   const did = decodeURIComponent(Array.isArray(param) ? (param[0] ?? '') : (param ?? ''));
   if (!isValidDidStellar(did)) {
     throw new DidError('did_invalid', `path parameter is not a valid did:stellar: ${did}`);
   }
-  const parsed = parseDidStellar(did);
-  if (parsed.network !== network) {
-    throw new DidError(
-      'network_invalid',
-      `service is configured for ${network}, got DID on ${parsed.network}`
-    );
-  }
-  return did;
+  return { did, network: parseDidStellar(did).network };
 }
 
 interface RegisterBody {
   did: string;
   record: DidRecordInput;
   sourcePublicKey: string;
+  network: NetworkType;
 }
 
-function parseRegisterBody(body: unknown, network: NetworkType): RegisterBody {
+function parseRegisterBody(body: unknown): RegisterBody {
   if (!isPlainObject(body)) throw new DidError('unknown', 'register body must be a JSON object');
   const did = expectString(body, 'did');
   if (!isValidDidStellar(did)) {
     throw new DidError('did_invalid', `body.did is not a valid did:stellar: ${did}`);
   }
-  const parsed = parseDidStellar(did);
-  if (parsed.network !== network) {
-    throw new DidError(
-      'network_invalid',
-      `service is configured for ${network}, got DID on ${parsed.network}`
-    );
-  }
   const record = expectRecord(body, 'record');
   const sourcePublicKey = expectString(body, 'sourcePublicKey');
-  return { did, record, sourcePublicKey };
+  return { did, record, sourcePublicKey, network: parseDidStellar(did).network };
 }
 
 interface UpdateBody {
@@ -244,7 +263,7 @@ interface UpdateBody {
   sourcePublicKey: string;
 }
 
-function parseUpdateBody(body: unknown, _network: NetworkType): UpdateBody {
+function parseUpdateBody(body: unknown): UpdateBody {
   if (!isPlainObject(body)) throw new DidError('unknown', 'update body must be a JSON object');
   const expectedVersion = expectInt(body, 'expectedVersion');
   const record = expectRecord(body, 'record');

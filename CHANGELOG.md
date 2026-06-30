@@ -18,6 +18,22 @@ state of the monorepo.
 
 ## [Unreleased]
 
+### Added (multi-network)
+
+- **Multi-network resolver.** The HTTP service now serves both `testnet` and
+  `mainnet` from a single deployment and routes each request by the network
+  embedded in the `did:stellar:{network}:...` identifier (no `NETWORK_TYPE`
+  lock). Per-network config via `DID_REGISTRY_CONTRACT_ID_TESTNET` /
+  `DID_REGISTRY_CONTRACT_ID_MAINNET` and `STELLAR_RPC_URL_TESTNET` /
+  `STELLAR_RPC_URL_MAINNET`; the legacy single-network envs (`NETWORK_TYPE`,
+  `DID_REGISTRY_CONTRACT_ID`, `STELLAR_RPC_URL`) still work as a fallback for
+  the named network. Requests for an unconfigured network return a clean
+  error instead of resolving against the wrong registry.
+- **SDK:** `DEFAULT_REGISTRY_CONTRACT_IDS.mainnet` is now populated with the
+  mainnet `did-stellar-registry` (`CD6LSWW5ZSXOO5WAIHKQLQ262TW7BPI37PNEVMMA273BAPC65NN2AYXQ`).
+- `GET /health` and the OpenAPI `x-acta` block now list both networks instead
+  of a single configured network.
+
 ### Changed (BREAKING — HTTP API)
 
 - **Renamed update endpoint:**

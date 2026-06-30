@@ -12,15 +12,16 @@
 import {
   DidError,
   isValidDidStellar,
+  parseDidStellar,
   resolveDidStellar,
   type DidResolutionResult,
 } from '@acta-team/did-stellar';
 import { Router, type Request, type Response } from 'express';
 
+import { networkConfigFor, type AppConfig } from '../config';
 import { negotiateContentType, projectDocumentForContentType } from '../lib/content-negotiation';
 import { httpFromDidError } from '../lib/errors';
 
-import type { AppConfig } from '../config';
 import type { Cache } from '../lib/cache';
 
 const CACHE_KEY = (did: string, network: string): string =>
@@ -49,7 +50,20 @@ export function resolverRouter(deps: ResolverRouterDeps): Router {
       return;
     }
 
-    const cacheKey = CACHE_KEY(rawDid, deps.config.network);
+    // The network is encoded in the DID; resolve against that network's registry.
+    const network = parseDidStellar(rawDid).network;
+    const netCfg = networkConfigFor(deps.config, network);
+    if (!netCfg) {
+      res
+        .status(501)
+        .type(contentType)
+        .json(
+          emptyResult('methodNotSupported', `network not configured on this resolver: ${network}`)
+        );
+      return;
+    }
+
+    const cacheKey = CACHE_KEY(rawDid, network);
     const cached = await deps.cache.get<{ status: number; body: DidResolutionResult }>(cacheKey);
     if (cached) {
       sendResult(res, contentType, cached.status, cached.body);
@@ -59,9 +73,9 @@ export function resolverRouter(deps: ResolverRouterDeps): Router {
     let result: DidResolutionResult;
     try {
       result = await resolve(rawDid, {
-        rpcUrl: deps.config.rpcUrl,
-        registryContractId: deps.config.registryContractId,
-        allowHttp: deps.config.allowHttp,
+        rpcUrl: netCfg.rpcUrl,
+        registryContractId: netCfg.registryContractId,
+        allowHttp: netCfg.allowHttp,
       });
     } catch (cause) {
       if (DidError.is(cause)) {
@@ -118,7 +132,10 @@ function pickHttpStatus(result: DidResolutionResult): number {
   return 200;
 }
 
-function emptyResult(error: 'invalidDid' | 'notFound', message: string): DidResolutionResult {
+function emptyResult(
+  error: 'invalidDid' | 'notFound' | 'methodNotSupported',
+  message: string
+): DidResolutionResult {
   return {
     didDocument: null,
     didDocumentMetadata: { versionId: '' },
