@@ -41,6 +41,16 @@ export interface AppConfig {
   readonly corsOrigins: '*' | readonly string[];
   readonly logLevel: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
   readonly nodeEnv: 'development' | 'production' | 'test';
+  /**
+   * Optional PostHog analytics. When `apiKey` is null the service emits
+   * no events — analytics is strictly opt-in via `POSTHOG_API_KEY`,
+   * matching the trust-minimised, no-required-infra posture of the
+   * resolver.
+   */
+  readonly analytics: {
+    readonly apiKey: string | null;
+    readonly host: string;
+  };
 }
 
 /** All networks the service can serve. */
@@ -90,6 +100,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     corsOrigins,
     logLevel: parseLogLevel(env.LOG_LEVEL),
     nodeEnv,
+    analytics: Object.freeze({
+      apiKey: env.POSTHOG_API_KEY?.trim() || null,
+      host: env.POSTHOG_HOST?.trim() || 'https://us.i.posthog.com',
+    }),
   });
 }
 

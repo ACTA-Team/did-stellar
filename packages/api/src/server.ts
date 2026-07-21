@@ -23,6 +23,7 @@ import { recordsRouter } from './routes/records';
 import { resolverRouter } from './routes/resolver';
 
 import type { AppConfig } from './config';
+import type { Analytics } from './lib/analytics';
 import type { Cache } from './lib/cache';
 import type { Logger } from './logger';
 
@@ -30,6 +31,7 @@ export interface BuildAppDeps {
   readonly config: AppConfig;
   readonly cache: Cache;
   readonly logger: Logger;
+  readonly analytics: Analytics;
 }
 
 export function buildApp(deps: BuildAppDeps): Express {
@@ -75,9 +77,9 @@ export function buildApp(deps: BuildAppDeps): Express {
 
   // --- Routes ---------------------------------------------------------------
   app.use(healthRouter(deps.config));
-  app.use(resolverRouter({ config: deps.config, cache: deps.cache }));
+  app.use(resolverRouter({ config: deps.config, cache: deps.cache, analytics: deps.analytics }));
   app.use(recordsRouter({ config: deps.config }));
-  app.use(mutationsRouter({ config: deps.config }));
+  app.use(mutationsRouter({ config: deps.config, analytics: deps.analytics }));
 
   // --- OpenAPI + Swagger UI -------------------------------------------------
   app.get('/openapi.json', (_req: Request, res: Response) => {

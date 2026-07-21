@@ -12,6 +12,7 @@ import pino from 'pino';
 import request from 'supertest';
 import { describe, expect, it, beforeEach } from 'vitest';
 
+import { buildAnalytics } from '../src/lib/analytics';
 import { InMemoryCache } from '../src/lib/cache';
 import { buildApp } from '../src/server';
 
@@ -41,6 +42,7 @@ function makeConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     corsOrigins: '*',
     logLevel: 'fatal',
     nodeEnv: 'test',
+    analytics: { apiKey: null, host: 'https://us.i.posthog.com' },
   };
   return Object.freeze({ ...base, ...overrides });
 }
@@ -50,6 +52,8 @@ function makeApp(overrides: Partial<AppConfig> = {}) {
     config: makeConfig(overrides),
     cache: new InMemoryCache(),
     logger: pino({ level: 'silent' }),
+    // apiKey: null → no-op analytics; tests never touch PostHog.
+    analytics: buildAnalytics({ apiKey: null, host: 'https://us.i.posthog.com' }),
   });
 }
 

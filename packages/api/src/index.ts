@@ -7,6 +7,7 @@
  */
 
 import { loadConfig } from './config';
+import { buildAnalytics } from './lib/analytics';
 import { buildCache } from './lib/cache';
 import { buildLogger } from './logger';
 import { buildApp } from './server';
@@ -27,7 +28,9 @@ async function main(): Promise<void> {
     onError: (err) => logger.error({ err }, 'cache backend error'),
   });
 
-  const app = buildApp({ config, cache, logger });
+  const analytics = buildAnalytics(config.analytics);
+
+  const app = buildApp({ config, cache, logger, analytics });
   const server = app.listen(config.port, () => {
     logger.info(
       {
@@ -37,6 +40,7 @@ async function main(): Promise<void> {
           mainnet: config.networks.mainnet.registryContractId || null,
         },
         cache: config.redisUrl ? 'redis' : 'in-memory',
+        analytics: config.analytics.apiKey ? 'posthog' : 'off',
       },
       'did-stellar-api ready'
     );
@@ -50,7 +54,7 @@ async function main(): Promise<void> {
         logger.error({ err }, 'http server close failed');
         process.exit(1);
       }
-      void cache.close().finally(() => {
+      void Promise.allSettled([cache.close(), analytics.shutdown()]).then(() => {
         logger.info('shutdown complete');
         process.exit(0);
       });

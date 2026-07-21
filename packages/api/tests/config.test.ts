@@ -76,4 +76,16 @@ describe('loadConfig', () => {
   it('rejects an invalid LOG_LEVEL', () => {
     expect(() => loadConfig({ LOG_LEVEL: 'verbose' })).toThrow(/LOG_LEVEL/);
   });
+
+  it('disables analytics by default and enables it via POSTHOG_API_KEY', () => {
+    expect(loadConfig({}).analytics).toEqual({
+      apiKey: null,
+      host: 'https://us.i.posthog.com',
+    });
+    const cfg = loadConfig({
+      POSTHOG_API_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://eu.i.posthog.com',
+    });
+    expect(cfg.analytics).toEqual({ apiKey: 'phc_test', host: 'https://eu.i.posthog.com' });
+  });
 });

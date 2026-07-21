@@ -43,23 +43,31 @@ import {
 import { Router, type Request, type Response } from 'express';
 
 import { networkConfigFor, type AppConfig, type NetworkConfig } from '../config';
+import { anonId, type Analytics } from '../lib/analytics';
 import { httpFromDidError } from '../lib/errors';
 
 export interface MutationsRouterDeps {
   readonly config: AppConfig;
+  readonly analytics: Analytics;
 }
+
+/** The five lifecycle operations, used as the `operation` event property. */
+type Operation = 'register' | 'update' | 'transfer' | 'deactivate' | 'submit';
 
 export function mutationsRouter(deps: MutationsRouterDeps): Router {
   const router = Router();
+  const { analytics } = deps;
 
   // --- POST /v1/dids/stellar ------------------------------------------------
   router.post('/v1/dids/stellar', async (req, res) => {
-    await handle(req, res, async () => {
+    await handle(req, res, { analytics, operation: 'register' }, async () => {
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr !== null) {
         // No DID in the path on register-submit: the network is taken from the body.
         const network = networkFromBody(req.body);
-        return submit(signedXdr, netCfgOrThrow(deps.config, network), network);
+        const result = await submit(signedXdr, netCfgOrThrow(deps.config, network), network);
+        analytics.capture('did_mutation', { operation: 'register', mode: 'submit', network });
+        return result;
       }
       const { did, record, sourcePublicKey, network } = parseRegisterBody(req.body);
       const netCfg = netCfgOrThrow(deps.config, network);
@@ -71,6 +79,18 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
         registryContractId: netCfg.registryContractId,
         allowHttp: netCfg.allowHttp,
       });
+      analytics.capture(
+        'did_mutation',
+        {
+          operation: 'register',
+          mode: 'prepare',
+          network,
+          num_auth_keys: record.authentication.length,
+          num_services: record.services.length,
+          has_metadata: record.metadataUri !== undefined,
+        },
+        anonId(did)
+      );
       return {
         xdr: prepared.xdr,
         network: prepared.network,
@@ -81,12 +101,18 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
 
   // --- POST /v1/dids/stellar/:did/update -----------------------------------
   router.post('/v1/dids/stellar/:did/update', async (req, res) => {
-    await handle(req, res, async () => {
+    await handle(req, res, { analytics, operation: 'update' }, async () => {
       const { did, network } = requireDid(req);
       const netCfg = netCfgOrThrow(deps.config, network);
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr !== null) {
-        return submit(signedXdr, netCfg, network);
+        const result = await submit(signedXdr, netCfg, network);
+        analytics.capture(
+          'did_mutation',
+          { operation: 'update', mode: 'submit', network },
+          anonId(did)
+        );
+        return result;
       }
       const { expectedVersion, record, sourcePublicKey } = parseUpdateBody(req.body);
       const prepared = await prepareUpdateDidXdr({
@@ -98,6 +124,11 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
         registryContractId: netCfg.registryContractId,
         allowHttp: netCfg.allowHttp,
       });
+      analytics.capture(
+        'did_mutation',
+        { operation: 'update', mode: 'prepare', network, expected_version: expectedVersion },
+        anonId(did)
+      );
       return {
         xdr: prepared.xdr,
         network: prepared.network,
@@ -108,12 +139,18 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
 
   // --- POST /v1/dids/stellar/:did/transfer ---------------------------------
   router.post('/v1/dids/stellar/:did/transfer', async (req, res) => {
-    await handle(req, res, async () => {
+    await handle(req, res, { analytics, operation: 'transfer' }, async () => {
       const { did, network } = requireDid(req);
       const netCfg = netCfgOrThrow(deps.config, network);
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr !== null) {
-        return submit(signedXdr, netCfg, network);
+        const result = await submit(signedXdr, netCfg, network);
+        analytics.capture(
+          'did_mutation',
+          { operation: 'transfer', mode: 'submit', network },
+          anonId(did)
+        );
+        return result;
       }
       const { expectedVersion, newController, sourcePublicKey } = parseTransferBody(req.body);
       const prepared = await prepareTransferControllerXdr({
@@ -125,6 +162,11 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
         registryContractId: netCfg.registryContractId,
         allowHttp: netCfg.allowHttp,
       });
+      analytics.capture(
+        'did_mutation',
+        { operation: 'transfer', mode: 'prepare', network, expected_version: expectedVersion },
+        anonId(did)
+      );
       return {
         xdr: prepared.xdr,
         network: prepared.network,
@@ -135,12 +177,18 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
 
   // --- POST /v1/dids/stellar/:did/deactivate -------------------------------
   router.post('/v1/dids/stellar/:did/deactivate', async (req, res) => {
-    await handle(req, res, async () => {
+    await handle(req, res, { analytics, operation: 'deactivate' }, async () => {
       const { did, network } = requireDid(req);
       const netCfg = netCfgOrThrow(deps.config, network);
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr !== null) {
-        return submit(signedXdr, netCfg, network);
+        const result = await submit(signedXdr, netCfg, network);
+        analytics.capture(
+          'did_mutation',
+          { operation: 'deactivate', mode: 'submit', network },
+          anonId(did)
+        );
+        return result;
       }
       const { expectedVersion, sourcePublicKey } = parseDeactivateBody(req.body);
       const prepared = await prepareDeactivateDidXdr({
@@ -151,6 +199,11 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
         registryContractId: netCfg.registryContractId,
         allowHttp: netCfg.allowHttp,
       });
+      analytics.capture(
+        'did_mutation',
+        { operation: 'deactivate', mode: 'prepare', network, expected_version: expectedVersion },
+        anonId(did)
+      );
       return {
         xdr: prepared.xdr,
         network: prepared.network,
@@ -161,13 +214,15 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
 
   // --- POST /v1/dids/stellar/submit ----------------------------------------
   router.post('/v1/dids/stellar/submit', async (req, res) => {
-    await handle(req, res, async () => {
+    await handle(req, res, { analytics, operation: 'submit' }, async () => {
       const signedXdr = extractSignedXdr(req.body);
       if (signedXdr === null) {
         throw new DidError('unknown', 'submit body must include signedXdr: string');
       }
       const network = networkFromBody(req.body);
-      return submit(signedXdr, netCfgOrThrow(deps.config, network), network);
+      const result = await submit(signedXdr, netCfgOrThrow(deps.config, network), network);
+      analytics.capture('did_mutation', { operation: 'submit', mode: 'submit', network });
+      return result;
     });
   });
 
@@ -178,13 +233,23 @@ export function mutationsRouter(deps: MutationsRouterDeps): Router {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-async function handle<T>(req: Request, res: Response, fn: () => Promise<T>): Promise<void> {
+async function handle<T>(
+  req: Request,
+  res: Response,
+  ctx: { analytics: Analytics; operation: Operation },
+  fn: () => Promise<T>
+): Promise<void> {
   try {
     const payload = await fn();
     res.json(payload);
   } catch (cause) {
     if (DidError.is(cause)) {
       const mapped = httpFromDidError(cause);
+      ctx.analytics.capture('did_mutation_failed', {
+        operation: ctx.operation,
+        error_code: cause.code,
+        http_status: mapped.status,
+      });
       res.status(mapped.status).json(mapped.body);
       return;
     }

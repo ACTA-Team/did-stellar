@@ -19,6 +19,7 @@ import {
 import { Router, type Request, type Response } from 'express';
 
 import { networkConfigFor, type AppConfig } from '../config';
+import { anonId, type Analytics } from '../lib/analytics';
 import { negotiateContentType, projectDocumentForContentType } from '../lib/content-negotiation';
 import { httpFromDidError } from '../lib/errors';
 
@@ -30,6 +31,7 @@ const CACHE_KEY = (did: string, network: string): string =>
 export interface ResolverRouterDeps {
   readonly config: AppConfig;
   readonly cache: Cache;
+  readonly analytics: Analytics;
   /** Override for tests. */
   readonly resolve?: typeof resolveDidStellar;
 }
@@ -43,6 +45,7 @@ export function resolverRouter(deps: ResolverRouterDeps): Router {
     const contentType = negotiateContentType(req);
 
     if (!isValidDidStellar(rawDid)) {
+      deps.analytics.capture('did_resolved', { outcome: 'invalid_did', http_status: 400 });
       res
         .status(400)
         .type(contentType)
@@ -54,6 +57,11 @@ export function resolverRouter(deps: ResolverRouterDeps): Router {
     const network = parseDidStellar(rawDid).network;
     const netCfg = networkConfigFor(deps.config, network);
     if (!netCfg) {
+      deps.analytics.capture(
+        'did_resolved',
+        { outcome: 'network_unconfigured', network, http_status: 501 },
+        anonId(rawDid)
+      );
       res
         .status(501)
         .type(contentType)
@@ -66,6 +74,16 @@ export function resolverRouter(deps: ResolverRouterDeps): Router {
     const cacheKey = CACHE_KEY(rawDid, network);
     const cached = await deps.cache.get<{ status: number; body: DidResolutionResult }>(cacheKey);
     if (cached) {
+      deps.analytics.capture(
+        'did_resolved',
+        {
+          outcome: resolutionOutcome(cached.body, cached.status),
+          network,
+          cache_hit: true,
+          http_status: cached.status,
+        },
+        anonId(rawDid)
+      );
       sendResult(res, contentType, cached.status, cached.body);
       return;
     }
@@ -80,6 +98,11 @@ export function resolverRouter(deps: ResolverRouterDeps): Router {
     } catch (cause) {
       if (DidError.is(cause)) {
         const mapped = httpFromDidError(cause);
+        deps.analytics.capture(
+          'did_resolved',
+          { outcome: 'error', network, error_code: cause.code, http_status: mapped.status },
+          anonId(rawDid)
+        );
         res.status(mapped.status).json(mapped.body);
         return;
       }
@@ -94,10 +117,27 @@ export function resolverRouter(deps: ResolverRouterDeps): Router {
       await deps.cache.set(cacheKey, { status, body: result }, deps.config.resolverCacheTtlSeconds);
     }
 
+    deps.analytics.capture(
+      'did_resolved',
+      {
+        outcome: resolutionOutcome(result, status),
+        network,
+        cache_hit: false,
+        http_status: status,
+      },
+      anonId(rawDid)
+    );
     sendResult(res, contentType, status, result);
   });
 
   return router;
+}
+
+/** Coarse, non-identifying label for a resolution outcome. */
+function resolutionOutcome(result: DidResolutionResult, status: number): string {
+  if (result.didResolutionMetadata.error) return result.didResolutionMetadata.error;
+  if (result.didDocumentMetadata.deactivated === true) return 'deactivated';
+  return status === 200 ? 'resolved' : 'other';
 }
 
 function sendResult(
