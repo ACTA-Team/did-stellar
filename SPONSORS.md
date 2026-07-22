@@ -6,7 +6,7 @@ organizations listed below.
 ## Stellar Community Fund
 
 The [Stellar Community Fund](https://communityfund.stellar.org) awarded ACTA a
-grant to build the `did:stellar` method — the SDK, the registry contract, and the
+grant to build the `did:stellar` method: the SDK, the registry contract, and the
 public HTTP resolver in this repository.
 
 - **Award:** [Stellar Community Fund submission](https://communityfund.stellar.org/submissions/recUBbVLf5Vj8oEW0)
