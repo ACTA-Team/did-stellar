@@ -18,6 +18,39 @@ state of the monorepo.
 
 ## [Unreleased]
 
+### Changed (licensing)
+
+- **Relicensed from MIT to Apache-2.0** across the monorepo — root, both
+  packages, and their published `package.json` `license` fields. The change was
+  made deliberately before the [DIF Universal Resolver
+  PR](https://github.com/decentralized-identity/universal-resolver/pull/576)
+  merges and before external contributions arrive: ACTA is still the sole
+  copyright holder, so relicensing is a single commit. Once third parties have
+  contributed under MIT, the same change would require each of their consent.
+- **Rationale.** `did:stellar` is a registered W3C DID method whose driver is
+  run by third parties in their own infrastructure. Apache-2.0 supplies two
+  things MIT does not, and both matter specifically at standards scale: an
+  express patent grant with defensive termination (§3), and an explicit
+  reservation of trademark rights (§6). It also removes a split that should
+  never have existed — the normative spec and the `did-stellar-registry`
+  contract in `contracts-acta` were already Apache-2.0 while the reference
+  implementation of the same method was MIT. The upstream
+  `universal-resolver` repository and DIF's `did-resolver`, a direct
+  dependency, are both Apache-2.0 as well.
+- **This is not a restriction.** Apache-2.0 remains an OSI-approved permissive
+  license: forking, self-hosting the resolver, and commercial use are as
+  unrestricted as they were under MIT. Downstream consumers gain a patent
+  grant they did not have before. The only new obligations are retaining the
+  `NOTICE` file and stating changes made.
+- Added `NOTICE` (root and per package, shipped in the npm tarball via the
+  `files` array) and `TRADEMARK.md`, which states what the Apache §6 trademark
+  reservation does and does not cover — forks may say they implement
+  `did:stellar`, but may not present themselves as published by ACTA.
+- `CONTRIBUTING.md` now requires a
+  [DCO 1.1](https://developercertificate.org/) sign-off (`git commit -s`) on
+  every commit, so the provenance of contributions from outside ACTA stays
+  auditable.
+
 ### Security
 
 - **axios raised to `>=1.18.0`** ([GHSA-gcfj-64vw-6mp9](https://github.com/advisories/GHSA-gcfj-64vw-6mp9),

@@ -82,4 +82,4 @@ failure.
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE). See also [NOTICE](./NOTICE).

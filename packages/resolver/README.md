@@ -1,6 +1,6 @@
 # `@acta-team/did-stellar`
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![DIF compliant](https://img.shields.io/badge/DIF-did--resolver-blue.svg)](https://github.com/decentralized-identity/did-resolver)
 
 Official TypeScript SDK for the [`did:stellar` v0.1 method](https://github.com/ACTA-Team/contracts-acta/blob/main/docs/did-spec/did-stellar-v0.1.md).
@@ -169,4 +169,4 @@ spec is intentionally a CI failure surface.
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE). See also [NOTICE](./NOTICE).
