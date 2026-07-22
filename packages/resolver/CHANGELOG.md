@@ -6,6 +6,14 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.1.1]
 
+### Security
+
+- The direct `axios` dependency moves from `^1.15.2` to `^1.18.0`, clearing
+  [GHSA-gcfj-64vw-6mp9](https://github.com/advisories/GHSA-gcfj-64vw-6mp9)
+  (high). A matching `pnpm.overrides` entry in the monorepo root is required
+  as well, because `@stellar/stellar-sdk` pins `axios` to an exact `1.16.1`
+  and would otherwise pull a second, vulnerable copy into the tree.
+
 ### Added
 
 - `DEFAULT_REGISTRY_CONTRACT_IDS.mainnet` is now populated with the mainnet

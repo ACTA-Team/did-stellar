@@ -18,6 +18,25 @@ state of the monorepo.
 
 ## [Unreleased]
 
+### Security
+
+- **axios raised to `>=1.18.0`** ([GHSA-gcfj-64vw-6mp9](https://github.com/advisories/GHSA-gcfj-64vw-6mp9),
+  high). The Node HTTP adapter could use an inherited proxy after interceptor
+  config cloning. The root `pnpm.overrides` entry still read
+  `"axios@<1.15.2": "^1.15.2"`, written for an earlier advisory; the new one
+  declares `>=1.15.2 <1.18.0` vulnerable, so the pin that used to protect the
+  tree had become the thing holding it on a vulnerable version (`1.16.1`).
+  The override is now `"axios@<1.18.0": "^1.18.0"` and the SDK's direct
+  dependency was raised to match.
+- The override is load-bearing rather than cosmetic: `@stellar/stellar-sdk`
+  pins `axios` to an exact `1.16.1` even on its latest release, so no amount of
+  upgrading dependencies reaches a patched version on its own. Forcing it
+  resolves all five reported paths to a single `axios@1.18.1` with no duplicate
+  copies in the tree.
+- `pnpm audit --audit-level=high --prod` drops from 11 findings (1 high,
+  9 moderate, 1 low) to 1 low, and exits 0. The published container image was
+  rebuilt so the shipped artifact carries the patched version.
+
 ### Added (container distribution)
 
 - **Public container image.** The HTTP resolver is now published as
