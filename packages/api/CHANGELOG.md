@@ -27,6 +27,19 @@ First public release. Implements every endpoint described in
   wrong contract.
 - `GET /health` and the OpenAPI `x-acta` block now report both networks.
 
+### Added (container distribution)
+
+- The service is published as the public container image
+  `ghcr.io/acta-team/driver-did-stellar:0.1.0` (`linux/amd64` +
+  `linux/arm64`), built from this package's `Dockerfile` with the repo root as
+  context. Published by `.github/workflows/docker.yml` on release.
+- The image runs with **no configuration**: with no env vars set, both
+  networks fall back to the SDK's default registry contract IDs and RPC URLs,
+  so `docker run -p 8080:8080 ghcr.io/acta-team/driver-did-stellar:0.1.0`
+  serves `GET /1.0/identifiers/{did}` immediately. This is a requirement for
+  the DIF Universal Resolver, which runs the driver in its own cluster without
+  ACTA-specific secrets.
+
 ### Added
 
 - **`GET /health`** — liveness probe; no external calls.

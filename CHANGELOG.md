@@ -18,6 +18,37 @@ state of the monorepo.
 
 ## [Unreleased]
 
+### Added (container distribution)
+
+- **Public container image.** The HTTP resolver is now published as
+  `ghcr.io/acta-team/driver-did-stellar`, built from the existing
+  [`packages/api/Dockerfile`](./packages/api/Dockerfile). This is what the
+  [DIF Universal Resolver](https://dev.uniresolver.io/) consumes: it does not
+  call a hosted URL, it pulls an image and runs the driver inside its own
+  cluster, so `did.acta.build` alone could never be listed there. GHCR was
+  chosen over Docker Hub because the Universal Resolver driver rules call out
+  Docker Hub's anonymous-pull rate limits as a reason drivers get removed.
+- **`.github/workflows/docker.yml`** — builds and pushes the image on every
+  published release (and on manual dispatch with an explicit tag), for
+  `linux/amd64` and `linux/arm64`, with provenance and SBOM attestations. The
+  workflow then boots the pushed image and asserts `/health` and
+  `GET /1.0/identifiers/{did}` respond, so a broken driver fails here rather
+  than in the Universal Resolver's CI. Releases are tagged `vX.Y.Z`; the image
+  tag drops the `v` to match `packages/api/package.json`. `:latest` is
+  published for convenience but must never be referenced from the Universal
+  Resolver config — their rules require an explicit version.
+
+### Fixed
+
+- **Root `.dockerignore` was missing.** The build context is the repo root
+  (the Dockerfile `COPY`s `pnpm-workspace.yaml` and `packages/` from the
+  workspace root, and Railway builds the same way), but the only
+  `.dockerignore` lived in `packages/api/` — Docker reads the one at the
+  *context* root, so it was never applied and every build shipped the full
+  `node_modules/` and `.git/` to the daemon. Added [`.dockerignore`](./.dockerignore)
+  at the root, which also closes a path where a stray `.env` could reach the
+  build context.
+
 ### Added (multi-network)
 
 - **Multi-network resolver.** The HTTP service now serves both `testnet` and

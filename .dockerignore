@@ -1,0 +1,35 @@
+# Build context is the repo ROOT (packages/api/Dockerfile COPYs from the
+# workspace root, and Railway builds with the root as context). Docker only
+# reads the .dockerignore at the context root, so packages/api/.dockerignore
+# is never applied — the exclusions have to live here.
+
+# Dependencies and build output are reproduced inside the builder stage.
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+**/coverage
+.turbo
+**/.turbo
+
+# VCS and tooling
+.git
+.github
+.husky
+.vscode
+.idea
+
+# Secrets — never into the image. .env.example is kept for reference.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+**/!.env.example
+
+# Docs and local noise
+docs
+*.md
+!README.md
+*.log
