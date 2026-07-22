@@ -10,7 +10,8 @@
     "dist",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "exports": {
     ".": {
@@ -57,7 +58,7 @@
     "dif"
   ],
   "author": "ACTA",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/ACTA-Team/did-stellar/tree/main/packages/resolver",
   "repository": {
     "type": "git",

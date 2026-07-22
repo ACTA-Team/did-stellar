@@ -1,0 +1,23 @@
+did-stellar
+Copyright 2026 ACTA
+
+This product includes software developed by ACTA (https://acta.build).
+
+This repository contains the reference implementation of the `did:stellar`
+v0.1 DID method:
+
+  - packages/resolver — @acta-team/did-stellar (TypeScript SDK)
+  - packages/api      — did-stellar-api (standalone HTTP resolver)
+
+The normative `did:stellar` specification and the `did-stellar-registry`
+Soroban contract live in https://github.com/ACTA-Team/contracts-acta and are
+likewise licensed under the Apache License, Version 2.0.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+"ACTA" and "did:stellar" branding are trademarks of ACTA. The Apache License
+does not grant permission to use them; see TRADEMARK.md.

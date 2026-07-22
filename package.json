@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Monorepo for the did:stellar SDK (@acta-team/did-stellar) and the standalone did-stellar-api HTTP service.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "ACTA",
   "homepage": "https://github.com/ACTA-Team/did-stellar",
   "repository": {

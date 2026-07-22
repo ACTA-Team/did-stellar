@@ -96,4 +96,6 @@ registry contract ID — no ACTA infrastructure is required.
 
 ## License
 
-[MIT](./LICENSE)
+[Apache-2.0](./LICENSE) — same license as the `did:stellar` specification and the
+`did-stellar-registry` contract. Includes an express patent grant.
+Trademarks are not licensed; see [TRADEMARK.md](./TRADEMARK.md).
