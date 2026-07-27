@@ -10,10 +10,9 @@
  * from the chain.
  */
 
-import { StrKey } from '@stellar/stellar-sdk';
-
 import { DidError } from '../errors';
 import { decodeMultikey } from '../multikey';
+import { isValidAddress } from '../utils/address';
 import { isHex32 } from '../utils/hex';
 import { isHttpsUrl } from '../utils/url';
 
@@ -42,10 +41,12 @@ const SERVICE_ID_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
  */
 export function validateDidRecordInput(input: DidRecordInput): void {
   // --- Controller ---
-  if (!StrKey.isValidEd25519PublicKey(input.controller)) {
+  // The registry contract types `controller` as a Soroban `Address`, so a
+  // classic account (G...) or a contract / smart account (C...) is valid.
+  if (!isValidAddress(input.controller)) {
     throw new DidError(
       'controller_invalid',
-      `controller must be a classic Stellar account (G...), got: ${input.controller}`
+      `controller must be a valid Stellar address (G... account or C... contract), got: ${input.controller}`
     );
   }
 

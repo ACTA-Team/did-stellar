@@ -1,4 +1,4 @@
-import { Keypair } from '@stellar/stellar-sdk';
+import { Keypair, StrKey } from '@stellar/stellar-sdk';
 import { describe, expect, it } from 'vitest';
 
 import { DidError } from '../src/errors';
@@ -7,6 +7,9 @@ import { validateDidRecordInput } from '../src/record/validate';
 import type { DidRecordInput } from '../src/record/types';
 
 const CONTROLLER = Keypair.random().publicKey();
+// A valid Soroban contract address (C...) — the registry contract types the
+// controller as `Address`, so a smart account / contract is a valid controller.
+const CONTRACT_CONTROLLER = StrKey.encodeContract(Buffer.alloc(32, 7));
 const KEY_AUTH = 'z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doY';
 const KEY_ASSERT = 'z6Mkff3F4VMDGbMbMtgRyXMrgr7qyxaKsPo7QEPQ2AkNrx2X';
 const KEY_AGR = 'z6LSnGSQaEk7SBZMmMLHTCqz6YUuiVVCmBNdAqSVdepqYAW1';
@@ -40,6 +43,12 @@ describe('validateDidRecordInput', () => {
           ],
         })
       )
+    ).not.toThrow();
+  });
+
+  it('accepts a contract (C...) controller', () => {
+    expect(() =>
+      validateDidRecordInput(minimal({ controller: CONTRACT_CONTROLLER }))
     ).not.toThrow();
   });
 

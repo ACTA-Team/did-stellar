@@ -16,9 +16,10 @@
  * touches raw `xdr.ScVal` constructors.
  */
 
-import { Address, nativeToScVal, scValToNative, StrKey, xdr } from '@stellar/stellar-sdk';
+import { Address, nativeToScVal, scValToNative, xdr } from '@stellar/stellar-sdk';
 
 import { DidError } from '../errors';
+import { isValidAddress } from '../utils/address';
 
 /** Build an `Option<T>` `ScVal` from a possibly-undefined inner value. */
 export function optionScVal(inner: xdr.ScVal | null | undefined): xdr.ScVal {
@@ -50,7 +51,10 @@ export function u32ScVal(n: number): xdr.ScVal {
 /** Encode a 16-byte `BytesN<16>` from a `Uint8Array`. */
 export function bytesN16ScVal(bytes: Uint8Array): xdr.ScVal {
   if (bytes.length !== 16) {
-    throw new DidError('did_id_invalid', `BytesN<16> requires exactly 16 bytes, got ${bytes.length}`);
+    throw new DidError(
+      'did_id_invalid',
+      `BytesN<16> requires exactly 16 bytes, got ${bytes.length}`
+    );
   }
   return xdr.ScVal.scvBytes(Buffer.from(bytes));
 }
@@ -63,10 +67,17 @@ export function bytesN32ScVal(bytes: Uint8Array): xdr.ScVal {
   return xdr.ScVal.scvBytes(Buffer.from(bytes));
 }
 
-/** Encode a Stellar `G...` classic account as an `Address` ScVal. */
+/**
+ * Encode a Stellar address as an `Address` ScVal. Accepts a classic
+ * account (`G...`) or a contract (`C...`), matching the registry
+ * contract's `Address` controller type.
+ */
 export function addressScVal(stellarAccount: string): xdr.ScVal {
-  if (!StrKey.isValidEd25519PublicKey(stellarAccount)) {
-    throw new DidError('controller_invalid', `controller must be a valid G... address, got: ${stellarAccount}`);
+  if (!isValidAddress(stellarAccount)) {
+    throw new DidError(
+      'controller_invalid',
+      `controller must be a valid Stellar address (G... account or C... contract), got: ${stellarAccount}`
+    );
   }
   return Address.fromString(stellarAccount).toScVal();
 }

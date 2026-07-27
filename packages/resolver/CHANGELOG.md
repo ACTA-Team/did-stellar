@@ -4,6 +4,20 @@ All notable changes to `@acta-team/did-stellar` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.2]
+
+### Changed
+
+- Controller addresses now accept Soroban contracts (`C...`) in addition to
+  classic accounts (`G...`), matching the `did-stellar-registry` contract,
+  which types `controller` as a Soroban `Address`. This affects
+  `prepareRegisterDidXdr` / record validation (`controller`) and
+  `prepareTransferControllerXdr` (`newController`). A contract controller is a
+  smart account that authorizes via its own `__check_auth`. Transaction
+  `sourcePublicKey` is unchanged and still must be a classic `G...` account,
+  since a contract cannot be the classic source that funds/signs the envelope;
+  register a contract-controlled DID with a funded `G...` source (or relayer).
+
 ## [0.1.1]
 
 ### Security

@@ -7,11 +7,10 @@
  * transaction (asymmetric to the admin two-step in `vc-vault`).
  */
 
-import { StrKey } from '@stellar/stellar-sdk';
-
 import { DidError } from '../errors';
 import { addressScVal, bytesN16ScVal, u32ScVal } from '../internal/scval';
 import { prepareInvokeXdr, type PreparedTx } from '../internal/tx';
+import { isValidAddress } from '../utils/address';
 
 import { resolveContext, type CommonPrepareOptions } from './common';
 
@@ -20,7 +19,7 @@ import type { NetworkType } from '../network';
 export interface PrepareTransferControllerArgs extends CommonPrepareOptions {
   readonly did: string;
   readonly expectedVersion: number;
-  /** New controller `G...` address. */
+  /** New controller address: a classic account (`G...`) or contract (`C...`). */
   readonly newController: string;
 }
 
@@ -33,10 +32,10 @@ export async function prepareTransferControllerXdr(
       `expectedVersion must be an integer ≥ 1, got ${args.expectedVersion}`
     );
   }
-  if (!StrKey.isValidEd25519PublicKey(args.newController)) {
+  if (!isValidAddress(args.newController)) {
     throw new DidError(
       'controller_invalid',
-      `newController must be a valid G... address, got: ${args.newController}`
+      `newController must be a valid Stellar address (G... account or C... contract), got: ${args.newController}`
     );
   }
 
