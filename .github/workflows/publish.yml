@@ -17,8 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned to a full commit SHA rather than the mutable `v4` tag: this
+      # job holds NPM_TOKEN and id-token write, so a repointed tag would be
+      # a supply-chain path straight to the published package.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 9.15.0
 
