@@ -1,0 +1,19 @@
+# CodeQL configuration for the did:stellar monorepo.
+#
+# Both workspace packages (packages/resolver and packages/api) are scanned in a
+# single database. `security-extended` is used because the resolver parses
+# untrusted DID documents and the API exposes them over HTTP.
+
+name: 'did-stellar CodeQL config'
+
+queries:
+  - uses: security-extended
+
+paths-ignore:
+  # Test suites use crafted malformed inputs by design.
+  - packages/*/tests/**
+  - '**/*.test.ts'
+  # Build output duplicates findings already reported against src/.
+  - '**/dist/**'
+  - '**/.turbo/**'
+  - docs/**
