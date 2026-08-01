@@ -54,7 +54,21 @@ export function buildApp(deps: BuildAppDeps): Express {
   );
   app.use(
     helmet({
-      contentSecurityPolicy: false, // resolver responses are JSON, not HTML
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          baseUri: ["'self'"],
+          fontSrc: ["'self'", 'https:', 'data:'],
+          formAction: ["'self'"],
+          frameAncestors: ["'self'"],
+          imgSrc: ["'self'", 'data:'],
+          objectSrc: ["'none'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrcAttr: ["'none'"],
+          styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+          upgradeInsecureRequests: [],
+        },
+      },
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     })
   );
