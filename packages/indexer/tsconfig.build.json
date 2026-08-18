@@ -5,5 +5,5 @@
     "rootDir": "src"
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["tests/**", "vitest.config.ts", "dist", "node_modules", "coverage"]
+  "exclude": ["tests/**", "scripts/**", "vitest.config.ts", "dist", "node_modules", "coverage"]
 }

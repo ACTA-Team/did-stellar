@@ -29,6 +29,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "measure:controllers": "tsx scripts/measure-controller-dids.ts",
     "clean": "rimraf dist .turbo coverage"
   },
   "engines": {
