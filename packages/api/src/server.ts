@@ -16,6 +16,7 @@ import { errorHandler } from './middleware/error-handler';
 import { rateLimit } from './middleware/rate-limit';
 import { requestId } from './middleware/request-id';
 import { buildOpenApiSpec } from './openapi';
+import { directoryRouter } from './routes/directory';
 import { docsRouter } from './routes/docs';
 import { healthRouter } from './routes/health';
 import { mutationsRouter } from './routes/mutations';
@@ -26,12 +27,24 @@ import type { AppConfig } from './config';
 import type { Analytics } from './lib/analytics';
 import type { Cache } from './lib/cache';
 import type { Logger } from './logger';
+import type { IndexHealth } from './routes/health';
+import type { DidIndexStore } from '@acta-team/did-stellar-indexer';
 
 export interface BuildAppDeps {
   readonly config: AppConfig;
   readonly cache: Cache;
   readonly logger: Logger;
   readonly analytics: Analytics;
+  /**
+   * Backing store for the controller → DIDs index. `null` (the default)
+   * disables `GET /v1/dids/stellar`, which then answers 501 - the
+   * resolver and mutation endpoints are unaffected either way.
+   */
+  readonly indexStore?: DidIndexStore | null;
+  /** Reports whether the index has finished its initial backfill. */
+  readonly indexReady?: () => boolean;
+  /** Per-network index status for `/health`. */
+  readonly indexStatus?: () => Promise<IndexHealth>;
 }
 
 export function buildApp(deps: BuildAppDeps): Express {
@@ -90,8 +103,20 @@ export function buildApp(deps: BuildAppDeps): Express {
   );
 
   // --- Routes ---------------------------------------------------------------
-  app.use(healthRouter(deps.config));
+  app.use(
+    healthRouter({
+      config: deps.config,
+      ...(deps.indexStatus ? { indexStatus: deps.indexStatus } : {}),
+    })
+  );
   app.use(resolverRouter({ config: deps.config, cache: deps.cache, analytics: deps.analytics }));
+  app.use(
+    directoryRouter({
+      config: deps.config,
+      store: deps.indexStore ?? null,
+      ...(deps.indexReady ? { isReady: deps.indexReady } : {}),
+    })
+  );
   app.use(recordsRouter({ config: deps.config }));
   app.use(mutationsRouter({ config: deps.config, analytics: deps.analytics }));
 

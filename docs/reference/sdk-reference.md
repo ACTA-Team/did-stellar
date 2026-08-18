@@ -100,6 +100,46 @@ const record = await readDidRecord({
 // record: { controller, authentication, version, deactivated, ... } | null
 ```
 
+### Batch-read many records in one round-trip
+
+`readDidRecord` costs one RPC call per DID. When you need several - an
+indexer confirming a wallet's DIDs, say - build the ledger keys yourself
+and send them in a single `getLedgerEntries`.
+
+```ts
+import {
+  buildDidRecordLedgerKey,
+  decodeLedgerEntryRecord,
+  decodeDidId,
+  buildRpcServer,
+} from '@acta-team/did-stellar';
+
+const rpcServer = buildRpcServer('https://soroban-testnet.stellar.org');
+const keys = didIds.map((id) => buildDidRecordLedgerKey('CB7ATU7SF5...NNZJ', decodeDidId(id)));
+
+const { entries } = await rpcServer.getLedgerEntries(...keys);
+const records = entries.map(decodeLedgerEntryRecord); // (DidRecord | null)[]
+```
+
+The RPC omits keys with no storage entry and does not promise request
+order, so match rows back by comparing `entry.key.toXDR('base64')` to the
+key you sent. See `packages/indexer/src/reconcile.ts` for a full
+implementation.
+
+### Validate a controller address
+
+```ts
+import { isValidAddress } from '@acta-team/did-stellar';
+
+isValidAddress('GCVRCDEQ...O36M'); // true  - classic account
+isValidAddress('CD6LSWW5...AYXQ'); // true  - smart account (contract)
+isValidAddress('not-an-address');  // false
+```
+
+The registry types `controller` as a Soroban `Address`, which accepts
+both a classic `G...` account and a `C...` contract. This is the same
+check the SDK applies internally before encoding a record.
+
 ### Validate before submitting
 
 ```ts

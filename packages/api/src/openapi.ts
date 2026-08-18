@@ -44,6 +44,27 @@ export function buildOpenApiSpec(cfg: Pick<AppConfig, 'networks'>) {
         },
       },
       '/v1/dids/stellar': {
+        get: {
+          summary: 'List the DIDs a controller holds (reverse index)',
+          description:
+            'A Stellar account may control several did:stellar identifiers - the method spec ' +
+            'recommends one DID per context so a holder cannot be correlated across relying ' +
+            'parties (§7.2, §8.3). The registry contract stores only did_id → record, so this ' +
+            'listing is served from an off-chain index rebuilt from the contract event stream. ' +
+            'Deactivated DIDs are included and flagged. A DID moved by transfer_controller is ' +
+            'reported under its new controller only. A controller with no DIDs returns 200 with ' +
+            'an empty array, never 404.',
+          parameters: [controllerParam(), networkParam()],
+          responses: {
+            '200': {
+              description: 'DIDs currently controlled by the address. May be empty.',
+              content: { 'application/json': { schema: didListSchema() } },
+            },
+            '400': errorResponse('controller_required / controller_invalid / network_invalid'),
+            '501': errorResponse('index_unavailable / network_unavailable'),
+            '503': errorResponse('index_warming - the initial backfill has not finished'),
+          },
+        },
         post: {
           summary: 'Register a DID (prepare or submit)',
           requestBody: jsonBody({
@@ -116,6 +137,65 @@ export function buildOpenApiSpec(cfg: Pick<AppConfig, 'networks'>) {
     },
   } as const;
 }
+
+const controllerParam = () => ({
+  name: 'controller',
+  in: 'query' as const,
+  required: true,
+  description: 'Stellar address holding the DIDs - a G... account or a C... contract.',
+  schema: { type: 'string', pattern: '^[GC][A-Z2-7]{55}$' },
+});
+
+const networkParam = () => ({
+  name: 'network',
+  in: 'query' as const,
+  required: true,
+  description: 'Which network to list. Required: the same address controls different DIDs on each.',
+  schema: { type: 'string', enum: ['mainnet', 'testnet'] },
+});
+
+const didListSchema = () => ({
+  type: 'object',
+  required: ['controller', 'network', 'count', 'dids', 'index'],
+  properties: {
+    controller: { type: 'string' },
+    network: { type: 'string', enum: ['mainnet', 'testnet'] },
+    count: { type: 'integer', minimum: 0 },
+    dids: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['did', 'didId', 'version', 'deactivated', 'createdLedger', 'updatedLedger'],
+        properties: {
+          did: { type: 'string', pattern: '^did:stellar:(mainnet|testnet):[a-z2-7]{26}$' },
+          didId: { type: 'string', pattern: '^[a-z2-7]{26}$' },
+          version: { type: 'integer', minimum: 0 },
+          deactivated: { type: 'boolean' },
+          createdLedger: { type: 'integer', minimum: 0 },
+          updatedLedger: { type: 'integer', minimum: 0 },
+        },
+      },
+    },
+    index: {
+      type: 'object',
+      description: 'Freshness of the answer.',
+      required: ['verified', 'fromLedger', 'toLedger', 'syncedAt'],
+      properties: {
+        verified: {
+          type: 'boolean',
+          description:
+            'true when every listed DID was confirmed against the ledger before responding.',
+        },
+        fromLedger: {
+          type: 'integer',
+          description: 'First ledger the index ingested events from.',
+        },
+        toLedger: { type: 'integer', description: 'Last ledger the index has ingested.' },
+        syncedAt: { type: ['string', 'null'], format: 'date-time' },
+      },
+    },
+  },
+});
 
 const didParam = () => ({
   name: 'did',

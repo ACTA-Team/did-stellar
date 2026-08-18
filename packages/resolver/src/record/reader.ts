@@ -32,29 +32,47 @@ export interface ReadDidRecordOptions {
 }
 
 /**
+ * Build the `LedgerKey` addressing a DID's persistent storage entry.
+ *
+ * Exposed because a caller that needs many records at once - an indexer
+ * rebuilding a controller → DIDs mapping, for instance - wants to batch
+ * them into a single `getLedgerEntries` call rather than paying one
+ * round-trip per DID. Pair with `decodeDidRecord` on the returned
+ * `contractData().val()`.
+ *
+ * Throws `contract_id_invalid` when `registryContractId` is not a valid
+ * `C...` strkey.
+ */
+export function buildDidRecordLedgerKey(
+  registryContractId: string,
+  didIdBytes: Uint8Array
+): xdr.LedgerKey {
+  if (!StrKey.isValidContract(registryContractId)) {
+    throw new DidError(
+      'contract_id_invalid',
+      `registryContractId must be a valid C... contract ID, got: ${registryContractId}`
+    );
+  }
+  const contractAddress = Address.contract(StrKey.decodeContract(registryContractId));
+  return xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({
+      contract: contractAddress.toScAddress(),
+      key: didRecordStorageKey(didIdBytes),
+      durability: xdr.ContractDataDurability.persistent(),
+    })
+  );
+}
+
+/**
  * Read the `DidRecord` for a given `didId`. Returns `null` if the
  * persistent storage entry is absent.
  *
  * Errors:
- * - `contract_id_invalid` — registry contract ID is not a valid C... strkey.
- * - `rpc_error`           — RPC returned an unexpected response shape.
+ * - `contract_id_invalid` - registry contract ID is not a valid C... strkey.
+ * - `rpc_error`           - RPC returned an unexpected response shape.
  */
 export async function readDidRecord(opts: ReadDidRecordOptions): Promise<DidRecord | null> {
-  if (!StrKey.isValidContract(opts.registryContractId)) {
-    throw new DidError(
-      'contract_id_invalid',
-      `registryContractId must be a valid C... contract ID, got: ${opts.registryContractId}`
-    );
-  }
-
-  const contractAddress = Address.contract(StrKey.decodeContract(opts.registryContractId));
-  const ledgerKey = xdr.LedgerKey.contractData(
-    new xdr.LedgerKeyContractData({
-      contract: contractAddress.toScAddress(),
-      key: didRecordStorageKey(opts.didIdBytes),
-      durability: xdr.ContractDataDurability.persistent(),
-    })
-  );
+  const ledgerKey = buildDidRecordLedgerKey(opts.registryContractId, opts.didIdBytes);
 
   let entries: Awaited<ReturnType<rpc.Server['getLedgerEntries']>>;
   try {
@@ -67,16 +85,27 @@ export async function readDidRecord(opts: ReadDidRecordOptions): Promise<DidReco
 
   const entry = entries.entries[0];
   if (!entry) return null;
+  return decodeLedgerEntryRecord(entry);
+}
 
-  // `getLedgerEntries` returns entries where the payload is the full
-  // `LedgerEntryData` envelope — either under `.val` (Stellar SDK ≥ v12)
-  // or under `.xdr` (older / alternate codepaths). In both cases the
-  // raw `DidRecord` ScVal lives inside `contractData().val()`. We do NOT
-  // accept a bare ScVal here: their `.switch()` enums collide with
-  // LedgerEntryType ones (both contain `contractData`), so distinguishing
-  // by switch name alone is unreliable. Always unwrap through
-  // `extractContractDataVal`.
-  const loose = entry as unknown as { val?: unknown; xdr?: unknown };
+/**
+ * Decode one `getLedgerEntries` result row into a {@link DidRecord}.
+ *
+ * Exposed alongside {@link buildDidRecordLedgerKey} so a batched caller
+ * can unwrap the rows of a multi-key request without re-deriving the
+ * envelope handling below. Returns `null` for a row that does not carry
+ * contract data.
+ *
+ * `getLedgerEntries` returns entries where the payload is the full
+ * `LedgerEntryData` envelope - either under `.val` (Stellar SDK ≥ v12)
+ * or under `.xdr` (older / alternate codepaths). In both cases the raw
+ * `DidRecord` ScVal lives inside `contractData().val()`. We do NOT accept
+ * a bare ScVal here: their `.switch()` enums collide with LedgerEntryType
+ * ones (both contain `contractData`), so distinguishing by switch name
+ * alone is unreliable. Always unwrap through `extractContractDataVal`.
+ */
+export function decodeLedgerEntryRecord(entry: unknown): DidRecord | null {
+  const loose = entry as { val?: unknown; xdr?: unknown };
   const envelope = pickLedgerEntryData(loose.val) ?? pickLedgerEntryData(loose.xdr);
   if (!envelope) return null;
 

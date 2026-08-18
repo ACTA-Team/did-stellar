@@ -4,10 +4,49 @@ All notable changes to the [`did.acta.build`](https://did.acta.build) HTTP resol
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] — Unreleased
+## [0.1.0] -- Unreleased
 
-First public release. Implements every endpoint described in
-[`TRANCHE_2_PLAN.md`](../../../TRANCHE_2_PLAN.md) §4.
+### Added (reverse index: `controller` -> DIDs)
+
+- **`GET /v1/dids/stellar?controller=G...&network=testnet`** -- lists every DID
+  a Stellar address currently controls. Backed by the new
+  [`@acta-team/did-stellar-indexer`](../indexer) package, which rebuilds the
+  mapping from the registry's contract events; the contract itself stores only
+  `did_id -> record`, by design.
+
+  Without this, an application's only memory of a user's DID was whatever it
+  put in that browser's `localStorage` -- so clearing storage or switching
+  device made the wallet look DID-less and the app minted a duplicate,
+  orphaning the previous DID and its credentials on-chain.
+
+- Response semantics: deactivated DIDs are **included** and flagged; a DID
+  moved by `transfer_controller` appears under its new controller only; a
+  wallet with no DIDs gets `200` with `dids: []`, never `404`. Every response
+  carries an `index` block (`verified`, `fromLedger`, `toLedger`, `syncedAt`)
+  describing the freshness of the answer.
+
+- Errors: `400 controller_required` / `controller_invalid` / `network_invalid`,
+  `501 index_unavailable` (index disabled) / `network_unavailable`, and
+  `503 index_warming` with `Retry-After` while the initial backfill runs --
+  refusing rather than under-reporting, since under-reporting is what causes
+  the duplicate-DID bug in the first place.
+
+- With `DID_INDEX_VERIFY_ON_READ` (default on) every listing is confirmed
+  against the ledger in one batched `getLedgerEntries` before responding, so
+  `version`, `deactivated` and the controller are exactly what the contract
+  holds.
+
+- The index runs in-process by default with an in-memory store (no extra
+  infrastructure). `DID_INDEX_DATABASE_URL` switches it to Postgres / Supabase;
+  `DID_INDEX_MODE=external` makes the API read-only against a store a separate
+  worker writes, which is what a multi-replica deployment wants. Full variable
+  list in [`.env.example`](./.env.example) and
+  [`docs/reference/configuration.md`](../../docs/reference/configuration.md).
+
+- `GET /health` gains an `index` block with per-network ingestion state (rows
+  indexed, ledger range covered, last sync, last error). It is reported, never
+  asserted on: a lagging index does not change `status`, because the resolver
+  endpoints do not depend on it.
 
 ### Added (multi-network)
 

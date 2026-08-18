@@ -4,6 +4,24 @@ All notable changes to `@acta-team/did-stellar` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `buildDidRecordLedgerKey(registryContractId, didIdBytes)` and
+  `decodeLedgerEntryRecord(entry)` -- the two halves of `readDidRecord`, now
+  exported separately so a caller that needs many records at once can batch
+  them into a single `getLedgerEntries` instead of paying one round-trip per
+  DID. `readDidRecord` is unchanged and is now built from them.
+- `isValidAddress(address)` -- the controller check the SDK already applied
+  internally, accepting a classic `G...` account or a `C...` contract, matching
+  the registry's Soroban `Address` type.
+
+Both exist because the new
+[`@acta-team/did-stellar-indexer`](../indexer) needs them, and both are useful
+to anyone building an indexer or a wallet UI over the registry. No behavioural
+change to existing exports.
+
 ## [0.1.2]
 
 ### Changed
