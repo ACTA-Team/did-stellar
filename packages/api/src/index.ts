@@ -11,6 +11,7 @@ import { DidIndexer, buildIndexStore } from '@acta-team/did-stellar-indexer';
 import { loadConfig } from './config';
 import { buildAnalytics } from './lib/analytics';
 import { buildCache } from './lib/cache';
+import { startIndexWithRetry } from './lib/index-start';
 import { buildLogger } from './logger';
 import { buildApp } from './server';
 
@@ -67,13 +68,15 @@ async function main(): Promise<void> {
   // available) while `GET /v1/dids/stellar` answers 503 until the
   // backfill lands. Blocking the listen on a full RPC walk would make a
   // slow upstream look like a dead pod.
+  let stopping = false;
   if (index) {
-    index.start().catch((err: unknown) => logger.error({ err }, 'did index failed to start'));
+    startIndexWithRetry(index, logger, () => stopping);
   }
 
   // Graceful shutdown — Kubernetes / Docker send SIGTERM.
   const shutdown = (signal: NodeJS.Signals): void => {
     logger.info({ signal }, 'shutting down');
+    stopping = true;
     index?.stop();
     server.close((err) => {
       if (err) {
@@ -103,6 +106,8 @@ interface IndexHandle {
   start(): Promise<void>;
   stop(): void;
   isReady(): boolean;
+  /** Record why the last start attempt failed, for `/health`. */
+  noteStartError(message: string | null): void;
   status(): Promise<IndexHealth>;
 }
 
@@ -122,7 +127,16 @@ interface IndexHandle {
 function buildIndex(config: AppConfig, logger: Logger): IndexHandle | null {
   if (!config.index.enabled) return null;
 
-  const store = buildIndexStore(config.index);
+  const store = buildIndexStore(config.index, (err) =>
+    logger.error({ err }, 'did index database pool error on an idle client')
+  );
+
+  // Set by the retry loop; surfaced in `/health` so an index that never
+  // came up is visible rather than only present in the logs.
+  let startError: string | null = null;
+  const noteStartError = (message: string | null): void => {
+    startError = message;
+  };
 
   if (config.index.mode === 'external') {
     if (store.kind === 'memory') {
@@ -141,10 +155,12 @@ function buildIndex(config: AppConfig, logger: Logger): IndexHandle | null {
       },
       stop: () => {},
       isReady: () => ready,
+      noteStartError,
       status: async () => ({
         mode: 'external',
         store: store.kind,
         ready,
+        startError,
         networks: await externalStatus(store),
       }),
     };
@@ -168,32 +184,52 @@ function buildIndex(config: AppConfig, logger: Logger): IndexHandle | null {
     start: () => indexer.start(),
     stop: () => indexer.stop(),
     isReady: () => indexer.isBackfilled,
+    noteStartError,
     status: async () => ({
       mode: 'embedded',
       store: store.kind,
       ready: indexer.isBackfilled,
+      startError,
       networks: await indexer.status(),
     }),
   };
 }
 
-/** Status for a read-only API replica: cursor + counts, no runtime state. */
+/**
+ * Status for a read-only API replica: cursor + counts, no runtime state.
+ *
+ * Never rejects, for the same reason `DidIndexer.status()` does not: the
+ * reads go to the store, and a health endpoint has to stay answerable
+ * precisely when the store it reports on is the thing that is broken.
+ */
 async function externalStatus(store: DidIndexStore): Promise<IndexHealth['networks']> {
   return Promise.all(
     (['testnet', 'mainnet'] as const).map(async (network) => {
-      const [cursor, dids] = await Promise.all([
-        store.getCursor(network),
-        store.countDids(network),
-      ]);
-      return {
-        network,
-        configured: cursor !== null,
-        dids,
-        firstLedger: cursor?.firstLedger ?? 0,
-        lastLedger: cursor?.lastLedger ?? 0,
-        syncedAt: cursor?.syncedAt ?? null,
-        lastError: null,
-      };
+      try {
+        const [cursor, dids] = await Promise.all([
+          store.getCursor(network),
+          store.countDids(network),
+        ]);
+        return {
+          network,
+          configured: cursor !== null,
+          dids,
+          firstLedger: cursor?.firstLedger ?? 0,
+          lastLedger: cursor?.lastLedger ?? 0,
+          syncedAt: cursor?.syncedAt ?? null,
+          lastError: null,
+        };
+      } catch (err) {
+        return {
+          network,
+          configured: false,
+          dids: 0,
+          firstLedger: 0,
+          lastLedger: 0,
+          syncedAt: null,
+          lastError: err instanceof Error ? err.message : String(err),
+        };
+      }
     })
   );
 }

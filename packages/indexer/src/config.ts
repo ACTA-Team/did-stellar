@@ -111,14 +111,22 @@ export function loadIndexConfig(env: NodeJS.ProcessEnv = process.env): IndexConf
   });
 }
 
-/** Build the configured store. The caller owns `init()` and `close()`. */
-export function buildIndexStore(cfg: IndexConfig): DidIndexStore {
+/**
+ * Build the configured store. The caller owns `init()` and `close()`.
+ *
+ * `onError` is wired through to the Postgres pool's idle-client `error`
+ * event. It is not optional in practice: an unhandled `error` on that
+ * emitter takes the process down, so a database that drops idle
+ * connections would kill the API.
+ */
+export function buildIndexStore(cfg: IndexConfig, onError?: (err: unknown) => void): DidIndexStore {
   if (cfg.store.kind === 'postgres') {
     return new PostgresIndexStore({
       connectionString: cfg.store.connectionString,
       schema: cfg.store.schema,
       skipSchema: cfg.store.skipSchema,
       ssl: cfg.store.ssl,
+      ...(onError ? { onError } : {}),
     });
   }
   return new MemoryIndexStore();

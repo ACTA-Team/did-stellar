@@ -28,6 +28,19 @@ import type { ApplyEventsResult, DidIndexStore } from './types';
 import type { NetworkType } from '@acta-team/did-stellar';
 import type { Pool, PoolClient, QueryResultRow } from 'pg';
 
+/**
+ * Attempts for the initial connect, including the first.
+ *
+ * Sized for a platform whose private network is not up the instant the
+ * container is - Railway's takes a moment, so the very first connect can
+ * fail with `ENOTFOUND` while nothing is actually wrong. Six attempts on
+ * a doubling backoff spans about eight seconds, which covers that warmup
+ * without making a genuinely dead database slow to report.
+ */
+export const DEFAULT_CONNECT_ATTEMPTS = 6;
+/** First backoff step. Doubles per attempt. */
+export const DEFAULT_CONNECT_BACKOFF_MS = 250;
+
 export interface PostgresIndexStoreOptions {
   readonly connectionString: string;
   /** Schema to create the tables in. Defaults to `public`. */
@@ -41,6 +54,19 @@ export interface PostgresIndexStoreOptions {
   readonly skipSchema?: boolean;
   /** Require TLS without certificate verification (Supabase poolers). */
   readonly ssl?: boolean;
+  /** Connect attempts on init. Defaults to {@link DEFAULT_CONNECT_ATTEMPTS}. */
+  readonly connectAttempts?: number;
+  /** First backoff step. Defaults to {@link DEFAULT_CONNECT_BACKOFF_MS}. */
+  readonly connectBackoffMs?: number;
+  /**
+   * Called when the pool reports an error on an *idle* client.
+   *
+   * `pg` emits this on the pool, and an unhandled `error` event on an
+   * EventEmitter takes the whole process down - so a database that drops
+   * idle connections would kill the API. The handler must exist; logging
+   * through it is optional.
+   */
+  readonly onError?: (err: unknown) => void;
 }
 
 interface DidRow extends QueryResultRow {
@@ -61,6 +87,47 @@ interface CursorRow extends QueryResultRow {
   synced_at: Date;
 }
 
+/**
+ * Error codes that mean "could not reach the database *yet*".
+ *
+ * Split out from everything else on purpose: an auth failure or a
+ * missing grant is a configuration problem the operator has to see
+ * immediately, and retrying it just delays the message.
+ */
+const TRANSIENT_CONNECT_CODES: ReadonlySet<string> = new Set([
+  // Node socket / DNS layer. `ENOTFOUND` and `EAI_AGAIN` are the ones a
+  // private network that has not finished coming up produces.
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'EPIPE',
+  // Postgres SQLSTATE class 08 - connection exception.
+  '08000',
+  '08001',
+  '08003',
+  '08004',
+  '08006',
+  // cannot_connect_now: the server is still starting up.
+  '57P03',
+]);
+
+/** True when the failure is worth another attempt. */
+export function isTransientConnectionError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const { code, message } = err as { code?: unknown; message?: unknown };
+  if (typeof code === 'string' && TRANSIENT_CONNECT_CODES.has(code)) return true;
+  // `pg` reports a client that died mid-query with no code at all.
+  return typeof message === 'string' && /connection terminated|server closed/i.test(message);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class PostgresIndexStore implements DidIndexStore {
   readonly kind = 'postgres' as const;
 
@@ -72,13 +139,38 @@ export class PostgresIndexStore implements DidIndexStore {
     this.schema = options.schema ?? DEFAULT_SCHEMA;
   }
 
+  /**
+   * Create the schema and prove the connection works.
+   *
+   * Retries transient connection failures rather than giving up on the
+   * first one. The caller treats a rejected `init()` as "this index is
+   * not coming up", so a one-off DNS miss during a platform's network
+   * warmup would otherwise leave controller listings empty until someone
+   * redeployed. Anything that is not a connection problem - bad
+   * credentials, a missing DDL grant - is thrown immediately, because
+   * retrying it would only delay a report the operator needs now.
+   */
   async init(): Promise<void> {
     if (this.initialised) return;
-    const pool = await this.getPool();
-    if (this.options.skipSchema !== true) {
-      await pool.query(buildSchemaSql(this.schema));
+    const attempts = Math.max(1, this.options.connectAttempts ?? DEFAULT_CONNECT_ATTEMPTS);
+    const backoff = Math.max(0, this.options.connectBackoffMs ?? DEFAULT_CONNECT_BACKOFF_MS);
+
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        const pool = await this.getPool();
+        // With the schema under migration control there is no DDL to run,
+        // but the connection still has to work before `init()` may claim
+        // success - otherwise the first failure surfaces as a broken read.
+        await pool.query(
+          this.options.skipSchema === true ? 'SELECT 1' : buildSchemaSql(this.schema)
+        );
+        this.initialised = true;
+        return;
+      } catch (err) {
+        if (attempt >= attempts || !isTransientConnectionError(err)) throw err;
+        await sleep(backoff * 2 ** (attempt - 1));
+      }
     }
-    this.initialised = true;
   }
 
   async applyEvents(
@@ -311,6 +403,11 @@ export class PostgresIndexStore implements DidIndexStore {
       max: this.options.maxConnections ?? 5,
       ...(this.options.ssl === true ? { ssl: { rejectUnauthorized: false } } : {}),
     });
+    // Mandatory, not diagnostic: `pg` emits `error` on the pool when an
+    // idle client dies, and an unhandled `error` event ends the process.
+    // The pool discards that client and opens a new one on the next
+    // acquire, so there is nothing to repair here - only to report.
+    this.pool.on('error', (err: unknown) => this.options.onError?.(err));
     return this.pool;
   }
 

@@ -183,6 +183,21 @@ The schema is created on boot, so step 1 needs no migration. Apply
 `sql/001_did_index.sql` yourself and set `DID_INDEX_PG_SKIP_SCHEMA=true` if
 the service role has no DDL grant.
 
+Use the **private** connection string (`${{Postgres.DATABASE_PRIVATE_URL}}`)
+rather than the public one: the traffic stays inside the project and is not
+billed as egress. Railway's private network is not up the instant a
+container is, so the first connect can fail with `ENOTFOUND` while nothing
+is wrong. That is handled - `init()` retries transient connection failures
+over about eight seconds, and the API keeps retrying the whole start with a
+backoff after that - but it is why `/health` reports `index.startError`
+rather than only logging it. A configuration error (bad credentials, no DDL
+grant) is not retried; it surfaces immediately.
+
+If the index never comes up, `/health` shows `ready: false` with the reason
+in `index.startError`. The endpoint still answers `200` on purpose: making
+it fail would make the platform's healthcheck restart a container whose
+HTTP surface is fine, and the resolver routes do not depend on the index.
+
 | Service               | Config file                     | Public domain | Replicas            |
 | --------------------- | ------------------------------- | ------------- | ------------------- |
 | `did-stellar-api`     | `railway.toml`                  | yes           | as many as you want |
