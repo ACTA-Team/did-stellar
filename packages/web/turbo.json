@@ -1,0 +1,26 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "inputs": [
+        "src/**",
+        "public/**",
+        "package.json",
+        "tsconfig.json",
+        "next.config.ts",
+        "postcss.config.mjs",
+        "eslint.config.mjs",
+        "components.json"
+      ]
+    },
+    "lint": {
+      "inputs": ["src/**", "eslint.config.mjs"]
+    },
+    "typecheck": {
+      "inputs": ["src/**", "tsconfig.json"]
+    }
+  }
+}
