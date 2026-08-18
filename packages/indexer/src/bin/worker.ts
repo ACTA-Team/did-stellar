@@ -31,6 +31,10 @@ async function main(): Promise<void> {
     return;
   }
 
+  for (const warning of config.warnings) {
+    logger.warn({ warning }, 'did index configuration warning');
+  }
+
   const store = buildIndexStore(config);
   const indexer = new DidIndexer({
     store,

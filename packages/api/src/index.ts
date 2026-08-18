@@ -31,6 +31,9 @@ async function main(): Promise<void> {
   }
 
   const logger = buildLogger(config);
+  for (const warning of config.index.warnings) {
+    logger.warn({ warning }, 'did index configuration warning');
+  }
   const cache = await buildCache({
     redisUrl: config.redisUrl,
     onError: (err) => logger.error({ err }, 'cache backend error'),
@@ -161,6 +164,7 @@ function buildIndex(config: AppConfig, logger: Logger): IndexHandle | null {
         store: store.kind,
         ready,
         startError,
+        warnings: config.index.warnings,
         networks: await externalStatus(store),
       }),
     };
@@ -190,6 +194,7 @@ function buildIndex(config: AppConfig, logger: Logger): IndexHandle | null {
       store: store.kind,
       ready: indexer.isBackfilled,
       startError,
+      warnings: config.index.warnings,
       networks: await indexer.status(),
     }),
   };

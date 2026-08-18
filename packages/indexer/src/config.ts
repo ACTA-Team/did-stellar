@@ -60,6 +60,13 @@ export interface IndexConfig {
     readonly mode: 'auto' | 'always' | 'off';
     readonly baseUrl: string;
   };
+  /**
+   * Configuration problems worth an operator's attention that are not
+   * severe enough to refuse to boot. Logged at startup and surfaced in
+   * the API's `/health`, because the alternative - degrading quietly to
+   * a default - is how a misconfigured index goes unnoticed.
+   */
+  readonly warnings: readonly string[];
   readonly pollIntervalSeconds: number;
   readonly reconcileIntervalSeconds: number;
   readonly reconcileBatch: number;
@@ -71,7 +78,25 @@ export function loadIndexConfig(env: NodeJS.ProcessEnv = process.env): IndexConf
   const enabled = parseBool(env.DID_INDEX_ENABLED, true);
   const mode = env.DID_INDEX_MODE?.trim() === 'external' ? 'external' : 'embedded';
 
+  const warnings: string[] = [];
+
   const connectionString = env.DID_INDEX_DATABASE_URL?.trim() || env.DATABASE_URL?.trim() || '';
+  // Set-but-empty is not the same as unset. Nobody deliberately assigns
+  // an empty connection string; on a platform with variable references
+  // it is what an unresolvable one collapses to - a reference to a
+  // variable the other service does not actually expose, say. Treating
+  // it like "no database configured" is technically what it is and
+  // practically a trap: the index silently falls back to memory, so it
+  // rebuilds on every boot and pre-retention DIDs vanish, with nothing
+  // anywhere saying why.
+  if (env.DID_INDEX_DATABASE_URL !== undefined && env.DID_INDEX_DATABASE_URL.trim() === '') {
+    warnings.push(
+      'DID_INDEX_DATABASE_URL is set but empty - on Railway or a similar platform that ' +
+        'usually means a variable reference that did not resolve. Check the name exists on ' +
+        'the database service. Falling back to the in-memory store.'
+    );
+  }
+
   const store: IndexConfig['store'] = connectionString
     ? {
         kind: 'postgres',
@@ -92,6 +117,7 @@ export function loadIndexConfig(env: NodeJS.ProcessEnv = process.env): IndexConf
       testnet: buildNetwork('testnet', env),
       mainnet: buildNetwork('mainnet', env),
     }),
+    warnings: Object.freeze(warnings),
     bootstrap: Object.freeze({
       mode: parseBootstrapMode(env.DID_INDEX_BOOTSTRAP),
       baseUrl: env.DID_INDEX_BOOTSTRAP_URL?.trim() || DEFAULT_BOOTSTRAP_URL,
