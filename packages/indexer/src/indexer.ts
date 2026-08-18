@@ -151,11 +151,23 @@ export class DidIndexer {
   /**
    * Run the initial backfill, then start the poll and sweep timers.
    * Resolves after the backfill. Calling it twice is a no-op.
+   *
+   * Rejects only when the store cannot be opened at all. That leaves the
+   * instance startable again, so a caller can retry a transient failure
+   * instead of running with a permanently dead index.
    */
   async start(): Promise<void> {
     if (this.running) return;
     this.running = true;
-    await this.store.init();
+    try {
+      await this.store.init();
+    } catch (err) {
+      // `running` guards against a double start, so leaving it set after
+      // a failure would turn every later retry into a silent no-op and
+      // strand the index for the life of the process.
+      this.running = false;
+      throw err;
+    }
 
     if (this.runtimes.length === 0) {
       this.logger.warn({}, 'did-stellar indexer started with no configured networks');
@@ -356,7 +368,15 @@ export class DidIndexer {
     });
   }
 
-  /** Per-network snapshot for `/health` and operator dashboards. */
+  /**
+   * Per-network snapshot for `/health` and operator dashboards.
+   *
+   * Never rejects. The reads it makes go to the store, so a database
+   * that is down would otherwise take the status call with it - and a
+   * health endpoint that cannot answer *because the thing it reports on
+   * is broken* is the one case it most needs to answer. A failed read
+   * reports zeros and the reason in `lastError`.
+   */
   async status(): Promise<IndexNetworkStatus[]> {
     const out: IndexNetworkStatus[] = [];
     for (const network of ['testnet', 'mainnet'] as const) {
@@ -374,20 +394,35 @@ export class DidIndexer {
         });
         continue;
       }
-      const [cursor, dids] = await Promise.all([
-        this.store.getCursor(network),
-        this.store.countDids(network),
-      ]);
-      out.push({
-        network,
-        configured: true,
-        dids,
-        firstLedger: cursor?.firstLedger ?? 0,
-        lastLedger: cursor?.lastLedger ?? 0,
-        syncedAt: cursor?.syncedAt ?? null,
-        lastError: runtime.lastError,
-        bootstrap: runtime.bootstrap,
-      });
+      try {
+        const [cursor, dids] = await Promise.all([
+          this.store.getCursor(network),
+          this.store.countDids(network),
+        ]);
+        out.push({
+          network,
+          configured: true,
+          dids,
+          firstLedger: cursor?.firstLedger ?? 0,
+          lastLedger: cursor?.lastLedger ?? 0,
+          syncedAt: cursor?.syncedAt ?? null,
+          lastError: runtime.lastError,
+          bootstrap: runtime.bootstrap,
+        });
+      } catch (err) {
+        out.push({
+          network,
+          configured: true,
+          dids: 0,
+          firstLedger: 0,
+          lastLedger: 0,
+          syncedAt: null,
+          // The store failure is the more useful of the two here: it is
+          // why every other number on this row is zero.
+          lastError: errorMessage(err),
+          bootstrap: runtime.bootstrap,
+        });
+      }
     }
     return out;
   }

@@ -25,6 +25,12 @@ export interface IndexHealth {
   readonly mode: 'embedded' | 'external';
   readonly store: 'memory' | 'postgres';
   readonly ready: boolean;
+  /**
+   * Why the index has not started, when it has not. Non-null here with
+   * `ready: false` means controller listings are empty for a reason the
+   * operator has to act on - the process keeps retrying meanwhile.
+   */
+  readonly startError?: string | null;
   readonly networks: readonly IndexNetworkStatus[];
 }
 
@@ -55,11 +61,24 @@ export function healthRouter(deps: HealthRouterDeps): Router {
       return;
     }
 
-    // The status read can touch Postgres; a failure there must not fail
-    // the probe, so it degrades to `index: null` like a disabled index.
+    // `index: null` means *disabled*, and must not be reused to mean
+    // "could not tell": the two look identical to an operator and one of
+    // them is an outage. `status()` is written not to reject, so the
+    // rejection path here is a genuine last resort - it still says which
+    // of the two happened rather than collapsing them.
     deps.indexStatus().then(
       (index) => res.json({ ...base, index }),
-      () => res.json({ ...base, index: null })
+      (err: unknown) =>
+        res.json({
+          ...base,
+          index: {
+            mode: deps.config.index.mode,
+            store: deps.config.index.store.kind,
+            ready: false,
+            startError: err instanceof Error ? err.message : String(err),
+            networks: [],
+          },
+        })
     );
   });
 
