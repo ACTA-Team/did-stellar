@@ -45,15 +45,18 @@ export function SiteFooter() {
       <div className="mx-auto w-full max-w-7xl px-5 py-14 sm:px-8">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-3">
-            {/* Same mark as the header, so the page opens and closes on
-                the same signature. */}
-            <Image
-              src="/stellar-lockup.png"
-              alt="Stellar"
-              width={377}
-              height={96}
-              className="h-7 w-auto"
-            />
+            {/* Same mark as the header, so the page opens and closes on the
+                same signature -- but quieter here, and sharing the h-6 band
+                with the column titles so all four columns start on one line. */}
+            <div className="flex h-6 items-center">
+              <Image
+                src="/stellar-lockup.png"
+                alt="Stellar"
+                width={377}
+                height={96}
+                className="h-5 w-auto"
+              />
+            </div>
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
               A W3C Decentralized Identifier anchored in a Soroban registry contract.
               Trust-minimized by design.
@@ -62,7 +65,7 @@ export function SiteFooter() {
 
           {COLUMNS.map((column) => (
             <div key={column.title} className="flex flex-col gap-3">
-              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+              <span className="flex h-6 items-center font-mono text-xs uppercase tracking-widest text-muted-foreground">
                 {column.title}
               </span>
               <ul className="flex flex-col gap-2">
