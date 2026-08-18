@@ -41,6 +41,7 @@ async function main(): Promise<void> {
     pollIntervalSeconds: config.pollIntervalSeconds,
     reconcileIntervalSeconds: config.reconcileIntervalSeconds,
     reconcileBatch: config.reconcileBatch,
+    bootstrap: config.bootstrap,
     logger,
   });
 

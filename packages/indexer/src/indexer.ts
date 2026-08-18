@@ -19,11 +19,12 @@
 
 import { buildRpcServer, type NetworkType } from '@acta-team/did-stellar';
 
+import { bootstrapNetwork, type FetchLike } from './discover';
 import { errorMessage, syncNetwork, type SyncNetworkResult } from './ingest';
 import { reconcile } from './reconcile';
 
 import type { DidIndexStore } from './store/types';
-import type { IndexNetworkStatus } from './types';
+import type { BootstrapStatus, IndexNetworkStatus } from './types';
 import type { rpc } from '@stellar/stellar-sdk';
 
 /** Minimal logger surface - satisfied by pino and by `console`. */
@@ -62,7 +63,26 @@ export interface DidIndexerOptions {
   readonly reconcileIntervalSeconds?: number;
   /** DIDs visited per reconciliation sweep. Defaults to 500. */
   readonly reconcileBatch?: number;
+  /**
+   * Seed the index from the contract's full event history before the
+   * first RPC sync. Without this a DID whose `DidRegistered` aged out of
+   * the RPC retention window is undiscoverable - see `discover.ts`.
+   */
+  readonly bootstrap?: BootstrapSettings;
   readonly logger?: IndexerLogger;
+}
+
+export interface BootstrapSettings {
+  /**
+   * `auto` bootstraps only when the store has no cursor for a network,
+   * which is every boot for the memory store and exactly once for a
+   * durable one. `always` re-runs it on every boot. `off` disables it.
+   */
+  readonly mode?: 'auto' | 'always' | 'off';
+  /** Archival index base URL. Defaults to `DEFAULT_BOOTSTRAP_URL`. */
+  readonly baseUrl?: string;
+  /** Injectable for tests. Defaults to the global `fetch`. */
+  readonly fetchImpl?: FetchLike;
 }
 
 interface NetworkRuntime {
@@ -73,6 +93,7 @@ interface NetworkRuntime {
   /** Set when a sync rewound past a retention gap; clears after a sweep. */
   needsSweep: boolean;
   sweepAfter: string | undefined;
+  bootstrap: BootstrapStatus;
 }
 
 export class DidIndexer {
@@ -81,6 +102,8 @@ export class DidIndexer {
   private readonly pollIntervalMs: number;
   private readonly reconcileIntervalMs: number;
   private readonly reconcileBatch: number;
+  private readonly bootstrapSettings: Required<Pick<BootstrapSettings, 'mode'>> &
+    Omit<BootstrapSettings, 'mode'>;
   private readonly runtimes: NetworkRuntime[];
 
   private pollTimer: NodeJS.Timeout | null = null;
@@ -95,6 +118,7 @@ export class DidIndexer {
     this.pollIntervalMs = Math.max(1, options.pollIntervalSeconds ?? 10) * 1000;
     this.reconcileIntervalMs = Math.max(0, options.reconcileIntervalSeconds ?? 900) * 1000;
     this.reconcileBatch = Math.max(1, options.reconcileBatch ?? 500);
+    this.bootstrapSettings = { ...options.bootstrap, mode: options.bootstrap?.mode ?? 'auto' };
 
     this.runtimes = [];
     for (const network of ['testnet', 'mainnet'] as const) {
@@ -109,6 +133,7 @@ export class DidIndexer {
         lastError: null,
         needsSweep: false,
         sweepAfter: undefined,
+        bootstrap: this.bootstrapSettings.mode === 'off' ? 'off' : 'pending',
       });
     }
   }
@@ -142,6 +167,7 @@ export class DidIndexer {
       { networks: this.networks, store: this.store.kind },
       'did-stellar indexer backfilling'
     );
+    await this.bootstrapOnce();
     await this.syncOnce();
     this.backfilled = true;
 
@@ -165,6 +191,60 @@ export class DidIndexer {
     if (this.reconcileTimer) clearInterval(this.reconcileTimer);
     this.pollTimer = null;
     this.reconcileTimer = null;
+  }
+
+  /**
+   * Seed each network from the contract's full event history.
+   *
+   * Runs before the first RPC sync so that a DID whose `DidRegistered`
+   * aged out of the retention window is still discoverable. Everything it
+   * seeds is re-read off the ledger inside `bootstrapNetwork` before this
+   * returns, so a bad archival response cannot put a controller into the
+   * index that the ledger does not agree with.
+   *
+   * Failures are recorded and swallowed. The index is *less complete*
+   * without a bootstrap, which is exactly what it was before this existed
+   * - not a reason to refuse to start.
+   */
+  async bootstrapOnce(): Promise<void> {
+    if (this.bootstrapSettings.mode === 'off') return;
+
+    for (const runtime of this.runtimes) {
+      try {
+        if (this.bootstrapSettings.mode === 'auto') {
+          // A stored cursor means this index already has a starting
+          // point: either a previous bootstrap or a durable backfill.
+          const cursor = await this.store.getCursor(runtime.network);
+          if (cursor !== null) {
+            runtime.bootstrap = 'skipped';
+            continue;
+          }
+        }
+
+        const result = await bootstrapNetwork({
+          store: this.store,
+          network: runtime.network,
+          registryContractId: runtime.config.registryContractId,
+          rpcServer: runtime.rpcServer,
+          ...(this.bootstrapSettings.baseUrl !== undefined
+            ? { baseUrl: this.bootstrapSettings.baseUrl }
+            : {}),
+          ...(this.bootstrapSettings.fetchImpl !== undefined
+            ? { fetchImpl: this.bootstrapSettings.fetchImpl }
+            : {}),
+        });
+        runtime.bootstrap = 'ok';
+        // `result` already carries `network`.
+        this.logger.info(result, 'indexer bootstrapped from contract history');
+      } catch (err) {
+        runtime.bootstrap = 'failed';
+        this.logger.warn(
+          { err, network: runtime.network },
+          'indexer bootstrap failed; falling back to the RPC retention window, so DIDs ' +
+            'registered before it will be missing from controller listings'
+        );
+      }
+    }
   }
 
   /**
@@ -290,6 +370,7 @@ export class DidIndexer {
           lastLedger: 0,
           syncedAt: null,
           lastError: null,
+          bootstrap: 'off',
         });
         continue;
       }
@@ -305,6 +386,7 @@ export class DidIndexer {
         lastLedger: cursor?.lastLedger ?? 0,
         syncedAt: cursor?.syncedAt ?? null,
         lastError: runtime.lastError,
+        bootstrap: runtime.bootstrap,
       });
     }
     return out;

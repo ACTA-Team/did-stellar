@@ -24,7 +24,13 @@
  */
 
 // --- Types ------------------------------------------------------------------
-export type { DidIndexState, IndexCursor, IndexedDid, IndexNetworkStatus } from './types';
+export type {
+  BootstrapStatus,
+  DidIndexState,
+  IndexCursor,
+  IndexedDid,
+  IndexNetworkStatus,
+} from './types';
 
 // --- Events -----------------------------------------------------------------
 export {
@@ -49,13 +55,35 @@ export type { ApplyEventsResult, DidIndexStore } from './store/types';
 export { DEFAULT_MAX_PAGES, DEFAULT_PAGE_LIMIT, isOutOfRangeError, syncNetwork } from './ingest';
 export type { SyncNetworkOptions, SyncNetworkResult } from './ingest';
 
+// --- Bootstrap discovery ----------------------------------------------------
+export {
+  DEFAULT_BOOTSTRAP_URL,
+  DEFAULT_DISCOVER_MAX_PAGES,
+  DEFAULT_DISCOVER_PAGE_LIMIT,
+  DEFAULT_DISCOVER_TIMEOUT_MS,
+  bootstrapNetwork,
+  discoverEvents,
+} from './discover';
+export type {
+  BootstrapNetworkOptions,
+  BootstrapNetworkResult,
+  DiscoverEventsOptions,
+  DiscoverEventsResult,
+  FetchLike,
+} from './discover';
+
 // --- Reconciliation ---------------------------------------------------------
 export { DEFAULT_READ_CHUNK, readDidRecords, reconcile, stateFromRecord } from './reconcile';
 export type { ReadRecordsOptions, ReconcileOptions, ReconcileResult } from './reconcile';
 
 // --- Orchestrator -----------------------------------------------------------
 export { DidIndexer } from './indexer';
-export type { DidIndexerOptions, IndexerLogger, IndexerNetworkConfig } from './indexer';
+export type {
+  BootstrapSettings,
+  DidIndexerOptions,
+  IndexerLogger,
+  IndexerNetworkConfig,
+} from './indexer';
 
 // --- Read path --------------------------------------------------------------
 export { listDidsByController } from './query';

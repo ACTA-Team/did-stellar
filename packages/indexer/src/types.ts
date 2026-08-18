@@ -73,6 +73,15 @@ export interface IndexCursor {
   readonly syncedAt: string;
 }
 
+/**
+ * Outcome of the archival bootstrap for one network.
+ *
+ * `failed` is the one an operator has to act on: the index is running on
+ * the RPC retention window alone, so any DID registered before it is
+ * missing from controller listings and will stay missing.
+ */
+export type BootstrapStatus = 'pending' | 'ok' | 'skipped' | 'failed' | 'off';
+
 /** Per-network status, surfaced through `/health` and the worker log. */
 export interface IndexNetworkStatus {
   readonly network: NetworkType;
@@ -82,4 +91,10 @@ export interface IndexNetworkStatus {
   readonly lastLedger: number;
   readonly syncedAt: string | null;
   readonly lastError: string | null;
+  /**
+   * Only reported by a process that runs the ingestion itself. A
+   * read-only API replica leaves it unset rather than guessing at what
+   * the worker did.
+   */
+  readonly bootstrap?: BootstrapStatus;
 }

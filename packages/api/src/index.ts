@@ -159,6 +159,7 @@ function buildIndex(config: AppConfig, logger: Logger): IndexHandle | null {
     pollIntervalSeconds: config.index.pollIntervalSeconds,
     reconcileIntervalSeconds: config.index.reconcileIntervalSeconds,
     reconcileBatch: config.index.reconcileBatch,
+    bootstrap: config.index.bootstrap,
     logger,
   });
 

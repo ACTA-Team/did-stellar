@@ -61,6 +61,8 @@ function makeConfig(overrides: Partial<AppConfig> = {}): AppConfig {
           allowHttp: false,
         },
       },
+      // Tests must never reach the archival bootstrap endpoint.
+      bootstrap: { mode: 'off' as const, baseUrl: '' },
       pollIntervalSeconds: 10,
       reconcileIntervalSeconds: 900,
       reconcileBatch: 500,
