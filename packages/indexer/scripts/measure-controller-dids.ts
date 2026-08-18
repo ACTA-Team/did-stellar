@@ -50,16 +50,16 @@ import {
   DEFAULT_RPC_URLS,
   type NetworkType,
 } from '@acta-team/did-stellar';
-import { rpc, xdr } from '@stellar/stellar-sdk';
+import { rpc } from '@stellar/stellar-sdk';
 
-import { decodeRegistryEvent, decodeRegistryEvents, type DidRegistryEvent } from '../src/events';
+import { DEFAULT_BOOTSTRAP_URL, discoverEvents } from '../src/discover';
+import { decodeRegistryEvents, type DidRegistryEvent } from '../src/events';
 import { reduceEvent } from '../src/reduce';
 
 import type { DidIndexState } from '../src/types';
 
-/** Events per page. Soroban RPC caps at 10 000; StellarExpert at 200. */
+/** Events per `getEvents` page. The RPC caps this at 10 000. */
 const RPC_PAGE_LIMIT = 10_000;
-const EXPERT_PAGE_LIMIT = 200;
 /** Hard stop so a paging bug cannot loop forever. */
 const MAX_PAGES = 5_000;
 /**
@@ -69,16 +69,9 @@ const MAX_PAGES = 5_000;
  */
 const RETENTION_SAFETY_MARGIN = 12;
 
-const EXPERT_API = 'https://api.stellar.expert/explorer';
-/** StellarExpert names the networks after their passphrases, not ours. */
-const EXPERT_NETWORK: Readonly<Record<NetworkType, string>> = Object.freeze({
-  mainnet: 'public',
-  testnet: 'testnet',
-});
-
 const ALL_NETWORKS: readonly NetworkType[] = ['mainnet', 'testnet'];
 
-type Source = 'expert' | 'rpc';
+type Source = 'history' | 'rpc';
 
 /** The four numbers the card asks for, plus the context to read them with. */
 interface NetworkReport {
@@ -155,7 +148,7 @@ async function measureNetwork(network: NetworkType, source: Source): Promise<Net
   const endpoint =
     source === 'rpc'
       ? process.env[`MEASURE_RPC_URL_${upper}`]?.trim() || DEFAULT_RPC_URLS[network]
-      : `${EXPERT_API}/${EXPERT_NETWORK[network]}`;
+      : DEFAULT_BOOTSTRAP_URL;
 
   const scan =
     source === 'rpc'
@@ -164,7 +157,7 @@ async function measureNetwork(network: NetworkType, source: Source): Promise<Net
           contractId,
           parseOptionalInt(process.env[`MEASURE_START_LEDGER_${upper}`])
         )
-      : await scanViaExpert(network, contractId);
+      : await scanViaHistory(network, contractId);
 
   // --- The four numbers, as the card defines them -------------------------
   // Group by the `controller` carried on `DidRegistered` itself. A `didId`
@@ -215,131 +208,30 @@ async function measureNetwork(network: NetworkType, source: Source): Promise<Net
   };
 }
 
-// --- Source: StellarExpert ---------------------------------------------------
-
-/** One record of `/contract/{id}/events`. Only the fields we decode. */
-interface ExpertEvent {
-  readonly id: string;
-  readonly ts: number;
-  readonly topicsXdr: readonly string[];
-  readonly bodyXdr: string;
-}
+// --- Source: archival contract history ---------------------------------------
 
 /**
- * Walk StellarExpert's contract-events index from the creation ledger.
- *
- * The records carry the untouched `topicsXdr` / `bodyXdr`, so they are
- * reshaped into the RPC's event type and handed to the same
- * `decodeRegistryEvent` the indexer uses - no second decoder to keep in
- * sync. The index only holds events from successful invocations, which is
- * the same set `decodeRegistryEvent` keeps via `inSuccessfulContractCall`.
+ * Walk the contract's whole event history through the indexer's own
+ * `discoverEvents`. The script deliberately calls the production module
+ * rather than keeping its own copy of the walk: the measurement is only
+ * worth anything if it reads events exactly the way the index does.
  */
-async function scanViaExpert(network: NetworkType, contractId: string): Promise<Scan> {
-  const base = `${EXPERT_API}/${EXPERT_NETWORK[network]}/contract/${contractId}/events`;
-  const events: DidRegistryEvent[] = [];
-
-  let cursor: string | null = null;
-  let pages = 0;
-  let rawEvents = 0;
-  let fromLedger = 0;
-  let toLedger = 0;
-  let truncated = true;
-
-  while (pages < MAX_PAGES) {
-    const url = `${base}?order=asc&limit=${EXPERT_PAGE_LIMIT}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
-    const res = await fetch(url, { headers: { accept: 'application/json' } });
-    if (!res.ok) {
-      throw new Error(`StellarExpert ${res.status} ${res.statusText} for ${url}`);
-    }
-    const body = (await res.json()) as { _embedded?: { records?: ExpertEvent[] } };
-    const records = body._embedded?.records ?? [];
-    pages += 1;
-    rawEvents += records.length;
-
-    for (const record of records) {
-      const ledger = ledgerFromToid(record.id);
-      if (fromLedger === 0 || ledger < fromLedger) fromLedger = ledger;
-      if (ledger > toLedger) toLedger = ledger;
-
-      const decoded = decodeExpertEvent(record, ledger);
-      if (decoded) events.push(decoded);
-    }
-
-    if (records.length < EXPERT_PAGE_LIMIT) {
-      truncated = false;
-      break;
-    }
-    cursor = records[records.length - 1]?.id ?? null;
-    if (cursor === null) {
-      truncated = false;
-      break;
-    }
-  }
-
+async function scanViaHistory(network: NetworkType, contractId: string): Promise<Scan> {
+  const result = await discoverEvents({ network, registryContractId: contractId });
   return {
-    events,
+    events: result.events,
     coverage: {
-      fromLedger,
-      toLedger,
-      pages,
-      rawEvents,
-      decodedEvents: events.length,
-      // The index starts at the contract's creation ledger, so nothing is
-      // cut off the front the way an RPC retention window cuts it off.
+      fromLedger: result.fromLedger,
+      toLedger: result.toLedger,
+      pages: result.pages,
+      rawEvents: result.rawEvents,
+      decodedEvents: result.events.length,
+      // The archival index starts at the contract's creation ledger, so
+      // nothing is cut off the front the way an RPC window cuts it off.
       retentionFloor: null,
-      truncated,
+      truncated: false,
     },
   };
-}
-
-/** Reshape a StellarExpert record into what `decodeRegistryEvent` expects. */
-function decodeExpertEvent(record: ExpertEvent, ledger: number): DidRegistryEvent | null {
-  let topic: xdr.ScVal[];
-  let value: xdr.ScVal;
-  try {
-    topic = record.topicsXdr.map((t) => xdr.ScVal.fromXDR(t, 'base64'));
-    value = xdr.ScVal.fromXDR(record.bodyXdr, 'base64');
-  } catch {
-    // Same policy as the indexer: an undecodable event is skipped, not fatal.
-    return null;
-  }
-
-  return decodeRegistryEvent({
-    // `txHash` is not exposed by this endpoint and nothing here reads it.
-    id: paddedEventId(record.id),
-    topic,
-    value,
-    ledger,
-    ledgerClosedAt: new Date(record.ts * 1000).toISOString(),
-    inSuccessfulContractCall: true,
-    txHash: '',
-  } as unknown as rpc.Api.EventResponse);
-}
-
-/**
- * A Stellar TOID packs the ledger sequence into its high 32 bits, so the
- * ledger is recoverable from the event id alone. StellarExpert formats
- * ids as `{toid}-{index}`.
- */
-function ledgerFromToid(id: string): number {
-  const [toid] = id.split('-');
-  try {
-    return Number(BigInt(toid ?? '0') >> 32n);
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * Zero-pad `{toid}-{index}` so plain string comparison stays chronological.
- * `reduceEvent` drops any event not strictly newer than the row's
- * `lastEventId`, and StellarExpert does not pad the way Soroban RPC does,
- * so unpadded ids would make a 9-digit toid sort above a 10-digit one and
- * silently discard later events.
- */
-function paddedEventId(id: string): string {
-  const [toid = '0', index = '0'] = id.split('-');
-  return `${toid.padStart(25, '0')}-${index.padStart(10, '0')}`;
 }
 
 // --- Source: Soroban RPC -----------------------------------------------------
@@ -516,7 +408,7 @@ function parseArgs(argv: readonly string[]): {
 } {
   let networks: NetworkType[] = [...ALL_NETWORKS];
   let json = false;
-  let source: Source = 'expert';
+  let source: Source = 'history';
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -532,8 +424,8 @@ function parseArgs(argv: readonly string[]): {
     } else if (arg === '--source' || arg === '-s') {
       const value = argv[i + 1];
       i += 1;
-      if (value !== 'expert' && value !== 'rpc') {
-        throw new Error(`--source expects expert or rpc, got: ${String(value)}`);
+      if (value !== 'history' && value !== 'rpc') {
+        throw new Error(`--source expects history or rpc, got: ${String(value)}`);
       }
       source = value;
     } else {

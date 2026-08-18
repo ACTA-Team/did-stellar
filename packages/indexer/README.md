@@ -19,11 +19,11 @@ no `controller → dids` mapping on-chain, so today an application's only
 memory of a user's DID is whatever it wrote to that browser's
 `localStorage`. That fails in three ordinary situations:
 
-| Situation | What happens today |
-|---|---|
-| User clears the browser, or opens the app on a second device | The app sees no DID and offers to create one |
-| User visits a partner dApp with the same wallet | The partner creates its own DID, unaware of the first |
-| Either of the above, repeatedly | Each orphaned DID keeps its credentials on-chain, forever |
+| Situation                                                    | What happens today                                        |
+| ------------------------------------------------------------ | --------------------------------------------------------- |
+| User clears the browser, or opens the app on a second device | The app sees no DID and offers to create one              |
+| User visits a partner dApp with the same wallet              | The partner creates its own DID, unaware of the first     |
+| Either of the above, repeatedly                              | Each orphaned DID keeps its credentials on-chain, forever |
 
 The bug is not that several DIDs exist. It is that they get created
 **unintentionally**, because there is no way to look up the ones that
@@ -62,12 +62,12 @@ Soroban RPC       │  getLedgerEntries(keys) → authoritative record   │
 **Ingestion** (`syncNetwork`) walks `getEvents` for the registry contract
 and folds four events into the projection:
 
-| Event | Effect on the index |
-|---|---|
-| `did_registered` | Creates the row: controller, version, `createdLedger` |
-| `did_controller_transferred` | Moves the DID to `new_controller` |
-| `did_deactivated` | Marks the row `deactivated: true` - it stays listed |
-| `did_updated` | Bumps the version |
+| Event                        | Effect on the index                                   |
+| ---------------------------- | ----------------------------------------------------- |
+| `did_registered`             | Creates the row: controller, version, `createdLedger` |
+| `did_controller_transferred` | Moves the DID to `new_controller`                     |
+| `did_deactivated`            | Marks the row `deactivated: true` - it stays listed   |
+| `did_updated`                | Bumps the version                                     |
 
 The reducer is pure, idempotent and order-safe, so replaying a page after
 a crash is a no-op and a late event cannot roll a row backwards.
@@ -77,7 +77,7 @@ straight from persistent storage in one batched `getLedgerEntries` and
 overwrites the projection. It is the correctness backstop, and it fixes
 what events alone cannot:
 
-- a DID registered *before* the RPC retention window (its later events
+- a DID registered _before_ the RPC retention window (its later events
   carry no controller - reconciliation supplies it);
 - a `transfer_controller` lost to a crash or an RPC gap;
 - a DID whose storage entry no longer exists.
@@ -86,17 +86,48 @@ what events alone cannot:
 
 Soroban RPC keeps a rolling window of events - the public SDF endpoints
 report roughly a week through `getHealth().oldestLedger`. **There is no
-way to walk the whole chain from `getEvents` alone.** So "backfill the
-history before exposing the endpoint" means, precisely: ingest everything
-the RPC still retains, starting at `oldestLedger`, and only then serve
-reads. `DidIndexer.start()` resolves after that pass, and the API answers
-`503 index_warming` until it does.
+way to walk the whole chain from `getEvents` alone.**
 
-Anything older is recovered through reconciliation, which reads the
-ledger and is **not** retention-bound: a DID registered before the window
-becomes fully indexed the moment it emits any event. To build a complete
-index from a contract's first ledger, point `DID_INDEX_START_LEDGER_*` at
-it and run against an archival RPC that retains that far back.
+That is not a minor gap. On a low-traffic production contract the window
+is routinely _empty_, and then the index answers "this wallet holds
+nothing" for every wallet. It happened on mainnet: three DIDs registered
+between 2026-06-30 and 2026-08-03, a seven-day window, and therefore an
+index that reported nothing at all no matter how often it restarted.
+
+Three mechanisms cover the three different ways a DID can be missing.
+
+| Mechanism                       | Reads                                       | Fixes                                                                                                                      |
+| ------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Bootstrap (`discover.ts`)       | Archival contract history                   | A DID whose `DidRegistered` aged out and that has not mutated since. This is the only one that can **discover** such a DID |
+| Event sync (`ingest.ts`)        | `getEvents`, retention-bound                | Everything current                                                                                                         |
+| Reconciliation (`reconcile.ts`) | `getLedgerEntries`, **not** retention-bound | Wrong or missing state on a DID the index already knows about                                                              |
+
+Only the bootstrap closes the discovery gap: reconciliation is
+authoritative about a DID's _contents_ but can only confirm or prune
+candidates the index has already heard of.
+
+#### The bootstrap, and what it does and does not trust
+
+On a network with no cursor yet, `DidIndexer.start()` reads the
+contract's whole event history from an archival index (StellarExpert by
+default), then **re-reads every DID it found off the ledger** through the
+normal `reconcile` path before the endpoint is served.
+
+That second step is the point. The archival source supplies _candidate
+`didId`s_ and nothing else that survives: every controller in the index
+came from a `getLedgerEntries` read, and any DID the ledger does not
+corroborate is dropped. A wrong or hostile response can only make the
+index miss DIDs, which is exactly the failure it exists to prevent.
+
+It never blocks startup either. If the source is unreachable the indexer
+logs a warning, reports `bootstrap: "failed"` in `/health`, and falls
+back to the RPC window - degraded in precisely the way it was before.
+
+Set `DID_INDEX_BOOTSTRAP=off` to disable it, or `DID_INDEX_BOOTSTRAP_URL`
+to point at a mirror or a local archival service of the same shape. If
+you would rather not depend on a third party at all, run against an
+archival RPC with `DID_INDEX_START_LEDGER_*` set to the contract's deploy
+ledger and turn the bootstrap off.
 
 ---
 
@@ -140,7 +171,7 @@ same Railway project:
    it as `DATABASE_URL`, which the indexer already falls back to, so you
    can also just reference it: `DID_INDEX_DATABASE_URL=${{Postgres.DATABASE_URL}}`.
 2. **Add the worker service.** `New -> GitHub Repo`, same repo, then set
-   *Settings -> Config-as-code* to `packages/indexer/railway.toml`. That
+   _Settings -> Config-as-code_ to `packages/indexer/railway.toml`. That
    file points at `packages/indexer/Dockerfile` and pins the service to one
    replica, which is what a single-writer index wants. Leave it with no
    public domain: the worker serves no HTTP.
@@ -152,10 +183,10 @@ The schema is created on boot, so step 1 needs no migration. Apply
 `sql/001_did_index.sql` yourself and set `DID_INDEX_PG_SKIP_SCHEMA=true` if
 the service role has no DDL grant.
 
-| Service | Config file | Public domain | Replicas |
-|---|---|---|---|
-| `did-stellar-api` | `railway.toml` | yes | as many as you want |
-| `did-stellar-indexer` | `packages/indexer/railway.toml` | no | exactly 1 |
+| Service               | Config file                     | Public domain | Replicas            |
+| --------------------- | ------------------------------- | ------------- | ------------------- |
+| `did-stellar-api`     | `railway.toml`                  | yes           | as many as you want |
+| `did-stellar-indexer` | `packages/indexer/railway.toml` | no            | exactly 1           |
 
 Both build with the repo root as the Docker context, which is what the
 multi-stage Dockerfiles expect.
@@ -170,11 +201,7 @@ instead.
 ### As a library
 
 ```ts
-import {
-  DidIndexer,
-  MemoryIndexStore,
-  listDidsByController,
-} from '@acta-team/did-stellar-indexer';
+import { DidIndexer, MemoryIndexStore, listDidsByController } from '@acta-team/did-stellar-indexer';
 
 const store = new MemoryIndexStore();
 const indexer = new DidIndexer({
@@ -203,22 +230,24 @@ const { dids, verified } = await listDidsByController({
 Every variable is optional. Defaults give a working in-memory index on
 both networks using the SDK's canonical registries.
 
-| Variable | Default | What it does |
-|---|---|---|
-| `DID_INDEX_ENABLED` | `true` | `false` disables the index and the endpoint (501) |
-| `DID_INDEX_MODE` | `embedded` | `external` = read-only; a separate worker writes |
-| `DID_INDEX_DATABASE_URL` | - | Postgres/Supabase URL. Unset ⇒ in-memory store |
-| `DATABASE_URL` | - | Fallback for the above |
-| `DID_INDEX_PG_SCHEMA` | `public` | Schema for the two tables |
-| `DID_INDEX_PG_SKIP_SCHEMA` | `false` | Skip `CREATE TABLE` (schema under migration control) |
-| `DID_INDEX_PG_SSL` | auto | TLS without cert verification. Auto-on for `supabase.` hosts |
-| `DID_INDEX_POLL_SECONDS` | `10` | Seconds between event polls (~2 ledger closes) |
-| `DID_INDEX_RECONCILE_SECONDS` | `900` | Seconds between sweeps. `0` disables the sweep |
-| `DID_INDEX_RECONCILE_BATCH` | `500` | DIDs visited per sweep |
-| `DID_INDEX_VERIFY_ON_READ` | `true` | Confirm every listing against the ledger before answering |
-| `DID_INDEX_RPC_URL_{TESTNET,MAINNET}` | falls back to `STELLAR_RPC_URL_*` | RPC for ingestion. Use an archival endpoint for a deep backfill |
-| `DID_INDEX_START_LEDGER_{TESTNET,MAINNET}` | RPC `oldestLedger` | First ledger to backfill from, clamped to retention |
-| `DID_REGISTRY_CONTRACT_ID_{TESTNET,MAINNET}` | SDK defaults | Registry contract to index |
+| Variable                                     | Default                           | What it does                                                                                       |
+| -------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `DID_INDEX_ENABLED`                          | `true`                            | `false` disables the index and the endpoint (501)                                                  |
+| `DID_INDEX_MODE`                             | `embedded`                        | `external` = read-only; a separate worker writes                                                   |
+| `DID_INDEX_DATABASE_URL`                     | -                                 | Postgres/Supabase URL. Unset ⇒ in-memory store                                                     |
+| `DATABASE_URL`                               | -                                 | Fallback for the above                                                                             |
+| `DID_INDEX_PG_SCHEMA`                        | `public`                          | Schema for the two tables                                                                          |
+| `DID_INDEX_PG_SKIP_SCHEMA`                   | `false`                           | Skip `CREATE TABLE` (schema under migration control)                                               |
+| `DID_INDEX_PG_SSL`                           | auto                              | TLS without cert verification. Auto-on for `supabase.` hosts                                       |
+| `DID_INDEX_POLL_SECONDS`                     | `10`                              | Seconds between event polls (~2 ledger closes)                                                     |
+| `DID_INDEX_RECONCILE_SECONDS`                | `900`                             | Seconds between sweeps. `0` disables the sweep                                                     |
+| `DID_INDEX_RECONCILE_BATCH`                  | `500`                             | DIDs visited per sweep                                                                             |
+| `DID_INDEX_VERIFY_ON_READ`                   | `true`                            | Confirm every listing against the ledger before answering                                          |
+| `DID_INDEX_BOOTSTRAP`                        | `auto`                            | Seed from the contract's full history. `auto` = only when a network has no cursor; `always`; `off` |
+| `DID_INDEX_BOOTSTRAP_URL`                    | StellarExpert                     | Archival contract-events index to bootstrap from                                                   |
+| `DID_INDEX_RPC_URL_{TESTNET,MAINNET}`        | falls back to `STELLAR_RPC_URL_*` | RPC for ingestion. Use an archival endpoint for a deep backfill                                    |
+| `DID_INDEX_START_LEDGER_{TESTNET,MAINNET}`   | RPC `oldestLedger`                | First ledger to backfill from, clamped to retention                                                |
+| `DID_REGISTRY_CONTRACT_ID_{TESTNET,MAINNET}` | SDK defaults                      | Registry contract to index                                                                         |
 
 ### `verifyOnRead`
 
@@ -241,13 +270,13 @@ Two tables, created on boot or from
 
 **`did_stellar_index`** - one row per `(network, did_id)`
 
-| Column | Notes |
-|---|---|
-| `network` | `mainnet` \| `testnet` |
-| `did_id` | 26-char base32 |
-| `controller` | **nullable** - unknown until reconciliation, for pre-window DIDs |
-| `version`, `deactivated`, `created_ledger`, `updated_ledger` | Mirrors the on-chain record |
-| `last_event_id`, `last_event_ledger` | Ordering guard that makes writes idempotent |
+| Column                                                       | Notes                                                            |
+| ------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `network`                                                    | `mainnet` \| `testnet`                                           |
+| `did_id`                                                     | 26-char base32                                                   |
+| `controller`                                                 | **nullable** - unknown until reconciliation, for pre-window DIDs |
+| `version`, `deactivated`, `created_ledger`, `updated_ledger` | Mirrors the on-chain record                                      |
+| `last_event_id`, `last_event_ledger`                         | Ordering guard that makes writes idempotent                      |
 
 **`did_stellar_index_cursor`** - one row per network: RPC paging token
 plus the ledger range covered.

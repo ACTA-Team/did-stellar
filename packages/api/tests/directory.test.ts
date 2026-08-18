@@ -65,6 +65,8 @@ function makeConfig(overrides: Partial<AppConfig> = {}): AppConfig {
       mode: 'embedded',
       store: { kind: 'memory' },
       networks: network,
+      // Tests must never reach the archival bootstrap endpoint.
+      bootstrap: { mode: 'off' as const, baseUrl: '' },
       pollIntervalSeconds: 10,
       reconcileIntervalSeconds: 900,
       reconcileBatch: 500,

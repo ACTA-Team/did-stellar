@@ -16,6 +16,7 @@ import {
   type NetworkType,
 } from '@acta-team/did-stellar';
 
+import { DEFAULT_BOOTSTRAP_URL } from './discover';
 import { MemoryIndexStore } from './store/memory';
 import { PostgresIndexStore } from './store/postgres';
 
@@ -50,6 +51,15 @@ export interface IndexConfig {
         readonly ssl: boolean;
       };
   readonly networks: Readonly<Record<NetworkType, IndexNetworkSettings | null>>;
+  /**
+   * Seeding the index from the contract's full event history. Without it
+   * the index can only ever see the RPC's rolling event window, which on
+   * a low-traffic contract is routinely empty - see `discover.ts`.
+   */
+  readonly bootstrap: {
+    readonly mode: 'auto' | 'always' | 'off';
+    readonly baseUrl: string;
+  };
   readonly pollIntervalSeconds: number;
   readonly reconcileIntervalSeconds: number;
   readonly reconcileBatch: number;
@@ -81,6 +91,10 @@ export function loadIndexConfig(env: NodeJS.ProcessEnv = process.env): IndexConf
     networks: Object.freeze({
       testnet: buildNetwork('testnet', env),
       mainnet: buildNetwork('mainnet', env),
+    }),
+    bootstrap: Object.freeze({
+      mode: parseBootstrapMode(env.DID_INDEX_BOOTSTRAP),
+      baseUrl: env.DID_INDEX_BOOTSTRAP_URL?.trim() || DEFAULT_BOOTSTRAP_URL,
     }),
     pollIntervalSeconds: parsePositiveInt('DID_INDEX_POLL_SECONDS', env.DID_INDEX_POLL_SECONDS, 10),
     reconcileIntervalSeconds: parseNonNegativeInt(
@@ -137,6 +151,19 @@ function buildNetwork(network: NetworkType, env: NodeJS.ProcessEnv): IndexNetwor
     allowHttp: rpcUrl.startsWith('http://'),
     ...(startLedger !== undefined ? { startLedger } : {}),
   });
+}
+
+/**
+ * `auto` (the default) bootstraps only when a network has no cursor yet.
+ * An unrecognised value falls back to `auto` rather than throwing: losing
+ * the bootstrap over a typo would silently shrink coverage, which is the
+ * failure this whole mechanism exists to prevent.
+ */
+function parseBootstrapMode(value: string | undefined): 'auto' | 'always' | 'off' {
+  const v = (value ?? '').trim().toLowerCase();
+  if (v === 'always') return 'always';
+  if (v === 'off' || v === 'false' || v === '0' || v === 'no') return 'off';
+  return 'auto';
 }
 
 function parseBool(value: string | undefined, fallback: boolean): boolean {
