@@ -198,6 +198,15 @@ in `index.startError`. The endpoint still answers `200` on purpose: making
 it fail would make the platform's healthcheck restart a container whose
 HTTP surface is fine, and the resolver routes do not depend on the index.
 
+Check the variable name the database service actually exposes before
+referencing it. Railway's "Connect" dialog suggests
+`DATABASE_PRIVATE_URL`, but not every Postgres template defines one - if
+it is absent the reference resolves to an empty string, and an empty
+connection string is indistinguishable from "no database configured".
+That case is now called out: `/health` reports it under `index.warnings`
+and the service logs it at startup, rather than quietly serving from
+memory. `${{Postgres.DATABASE_URL}}` is the name that always exists.
+
 | Service               | Config file                     | Public domain | Replicas            |
 | --------------------- | ------------------------------- | ------------- | ------------------- |
 | `did-stellar-api`     | `railway.toml`                  | yes           | as many as you want |

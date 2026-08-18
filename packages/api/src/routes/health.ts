@@ -31,6 +31,8 @@ export interface IndexHealth {
    * operator has to act on - the process keeps retrying meanwhile.
    */
   readonly startError?: string | null;
+  /** Configuration problems that did not stop the service from booting. */
+  readonly warnings?: readonly string[];
   readonly networks: readonly IndexNetworkStatus[];
 }
 
@@ -76,6 +78,7 @@ export function healthRouter(deps: HealthRouterDeps): Router {
             store: deps.config.index.store.kind,
             ready: false,
             startError: err instanceof Error ? err.message : String(err),
+            warnings: deps.config.index.warnings,
             networks: [],
           },
         })
