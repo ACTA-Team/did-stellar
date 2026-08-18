@@ -14,8 +14,14 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json tsconfig.base.js
 COPY packages ./packages
 
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @acta-team/did-stellar run build
-RUN pnpm --filter did-stellar-api run build
+
+# The trailing `...` selects did-stellar-api AND its workspace dependencies,
+# built in topological order. Listing each dependency by hand here is what
+# broke the image when the API gained @acta-team/did-stellar-indexer: the
+# root `pnpm build` runs through Turbo, which follows the dependency graph,
+# so CI stayed green while this Dockerfile silently skipped the new package
+# and tsc failed on an unresolvable import. This form cannot drift.
+RUN pnpm --filter did-stellar-api... run build
 
 # Trim to production-only deps for the service.
 RUN pnpm --filter did-stellar-api deploy --prod /out

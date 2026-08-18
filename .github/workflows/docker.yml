@@ -11,6 +11,16 @@ name: Docker
 on:
   release:
     types: [published]
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - 'turbo.json'
+      - 'tsconfig.base.json'
+      - '.dockerignore'
+      - '.github/workflows/docker.yml'
   workflow_dispatch:
     inputs:
       tag:
@@ -24,8 +34,69 @@ permissions:
   id-token: write
 
 jobs:
+  # Build the images on every PR without pushing.
+  #
+  # `pnpm build` at the root goes through Turbo, which follows the workspace
+  # dependency graph, so a Dockerfile that names its build steps by hand can
+  # fall out of sync with the graph and CI will never notice. That is exactly
+  # what happened when the API gained a dependency on
+  # @acta-team/did-stellar-indexer: every check was green and the image
+  # failed to build on deploy. Building here is the only check that exercises
+  # the Dockerfiles themselves.
+  validate:
+    name: Validate image builds
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: did-stellar-api
+            dockerfile: packages/api/Dockerfile
+            smoke: true
+          - name: did-stellar-indexer
+            dockerfile: packages/indexer/Dockerfile
+            smoke: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # Single platform and no push: this validates the build, the release
+      # job below is what produces the multi-arch published image.
+      - name: Build ${{ matrix.name }}
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ matrix.name }}:pr
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Proves the runtime stage actually boots, not just that tsc passed.
+      # The indexer image has no HTTP surface, so only the API is probed.
+      - name: Smoke-test ${{ matrix.name }}
+        if: matrix.smoke
+        run: |
+          docker run -d --name smoke -p 8080:8080 "${{ matrix.name }}:pr"
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8080/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/health | tee /dev/stderr | grep -q '"status":"ok"'
+          docker logs smoke
+          docker rm -f smoke
+
   publish:
     name: Build and push driver-did-stellar
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
