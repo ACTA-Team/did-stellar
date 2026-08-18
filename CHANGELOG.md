@@ -18,6 +18,88 @@ state of the monorepo.
 
 ## [Unreleased]
 
+### Added (reverse index: `controller` -> DIDs)
+
+- **New package `@acta-team/did-stellar-indexer`** ([`packages/indexer`](./packages/indexer))
+  and a new endpoint, `GET /v1/dids/stellar?controller=G...&network=testnet`,
+  answering the one question the registry contract deliberately does not:
+  *which DIDs does this wallet control?*
+
+  A Stellar account may hold several `did:stellar` identifiers on purpose --
+  the method spec recommends one DID per relying party so a holder cannot be
+  correlated across contexts (§7.2, §8.3). But with no reverse lookup, an
+  application's only memory of a user's DID was whatever it wrote to that
+  browser's `localStorage`. Clear the storage, switch device, or open a
+  partner dApp, and the wallet looked DID-less -- so a second DID was minted
+  and the first, with every credential issued against it, was orphaned
+  on-chain. The bug was never that several DIDs exist; it was that they were
+  created unintentionally.
+
+- **Off-chain, not on-chain.** An on-chain index would cost extra storage and
+  an extra write on every `register` and `transfer_controller`, charging every
+  caller for an interface problem -- and the contract is already deployed on
+  both networks. The data is already published in the events the contract
+  emits for exactly this purpose, so the index is rebuilt from them.
+
+- **Ingestion.** `syncNetwork` walks `getEvents` for the registry contract and
+  folds `did_registered`, `did_controller_transferred`, `did_deactivated` and
+  `did_updated` through a pure, idempotent, order-safe reducer. Replaying a
+  page after a crash is a no-op; a late event cannot roll a row backwards.
+
+- **Reconciliation.** `reconcile` reads authoritative `DidRecord`s straight
+  from persistent storage in one batched `getLedgerEntries` and repairs the
+  projection. It covers what events alone cannot: DIDs registered before the
+  RPC's event-retention window, transfers lost to a crash or an RPC gap, and
+  entries that no longer exist. With `DID_INDEX_VERIFY_ON_READ` (default on)
+  the same path runs per request, so a listing reflects the ledger even when a
+  transfer has not been ingested yet.
+
+- **Backfill before serving.** `DidIndexer.start()` resolves only after the
+  initial backfill; until then the endpoint answers `503 index_warming` with
+  `Retry-After`. Answering from a half-built index would under-report a wallet,
+  which is precisely the failure that makes an app mint a duplicate DID.
+
+- **Storage.** In-memory by default, so a bare deployment answers the endpoint
+  with no extra infrastructure. Set `DID_INDEX_DATABASE_URL` for a Postgres /
+  Supabase store (`sql/001_did_index.sql`, RLS enabled with a read-anyone
+  policy) that survives restarts and is shared across replicas, with a
+  standalone `did-stellar-indexer` worker as the single writer.
+
+- **Semantics.** Deactivated DIDs are listed and flagged rather than hidden. A
+  transferred DID is reported under its new controller only. A wallet with no
+  DIDs returns `200` with `dids: []` -- never `404`.
+
+- **Known limit.** Soroban RPC retains events for a rolling window (~1 week on
+  the public endpoints), so `getEvents` alone cannot walk the whole chain. The
+  backfill ingests everything the RPC still has; older DIDs are recovered
+  through reconciliation, which reads the ledger and is not retention-bound.
+  For a complete index from a contract's first ledger, run against an archival
+  RPC with `DID_INDEX_START_LEDGER_*`.
+
+- **Deployable as its own Railway service.** `packages/indexer/Dockerfile`
+  builds the worker image and `packages/indexer/railway.toml` configures it
+  (single replica, no public domain, no healthcheck path since it serves no
+  HTTP). Point the service's config-as-code path at that file, add Railway
+  Postgres, and set `DID_INDEX_MODE=external` on the API. Running the API
+  alone still needs none of this: it embeds the indexer by default.
+
+- Ingestion survives the retention-window boundary. `getHealth().oldestLedger`
+  is a moving target - the window slides forward every time a ledger closes -
+  so the floor read moments earlier can already be rejected by `getEvents`.
+  Live mainnet failed with `startLedger must be within the ledger range:
+  63883575 - 64004534` while `getHealth` had just reported `63882605`. The
+  floor now carries a small safety margin and a rejected floor triggers one
+  re-read of `getHealth` rather than failing the sync. Two compounding causes
+  had hidden it: Soroban RPC rejects with a plain JSON-RPC object rather than
+  an `Error`, so `String(err)` collapsed to `[object Object]` and the
+  out-of-range matcher never fired; and the retry path was reachable only
+  from a stored cursor, never from the first backfill.
+
+- SDK: `buildDidRecordLedgerKey`, `decodeLedgerEntryRecord` and
+  `isValidAddress` are now exported so a batched reader does not have to
+  re-derive the storage-key wire format. `/health` gains an `index` block with
+  per-network ingestion state.
+
 ### Changed (licensing)
 
 - **Relicensed from MIT to Apache-2.0** across the monorepo — root, both

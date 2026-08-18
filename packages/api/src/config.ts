@@ -21,6 +21,7 @@ import {
   isNetworkType,
   type NetworkType,
 } from '@acta-team/did-stellar';
+import { loadIndexConfig, type IndexConfig } from '@acta-team/did-stellar-indexer';
 
 export interface NetworkConfig {
   readonly rpcUrl: string;
@@ -51,6 +52,14 @@ export interface AppConfig {
     readonly apiKey: string | null;
     readonly host: string;
   };
+  /**
+   * Controller → DIDs reverse index. Enabled by default with an in-memory
+   * store, so `GET /v1/dids/stellar?controller=...` works on a bare
+   * deployment; set `DID_INDEX_DATABASE_URL` to make it durable, or
+   * `DID_INDEX_ENABLED=false` to serve resolver endpoints only.
+   * See `@acta-team/did-stellar-indexer`.
+   */
+  readonly index: IndexConfig;
 }
 
 /** All networks the service can serve. */
@@ -104,6 +113,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       apiKey: env.POSTHOG_API_KEY?.trim() || null,
       host: env.POSTHOG_HOST?.trim() || 'https://us.i.posthog.com',
     }),
+    index: loadIndexConfig(env),
   });
 }
 

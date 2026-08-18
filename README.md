@@ -7,6 +7,7 @@ v0.1 implementation — TypeScript SDK + standalone HTTP resolver.
 |---|---|---|
 | **SDK** | `@acta-team/did-stellar` — identifier generation, RPC resolution, DIF-compatible resolver, prepare/submit XDR, proof-of-control | [![npm](https://img.shields.io/npm/v/@acta-team/did-stellar)](https://www.npmjs.com/package/@acta-team/did-stellar) |
 | **HTTP resolver** | Standalone Express service. Serves `GET /1.0/identifiers/{did}` for DIF Universal Resolver + 6 lifecycle endpoints. No auth, trust-minimised. [Swagger UI](https://did.acta.build/docs) | [`did.acta.build`](https://did.acta.build) |
+| **Reverse index** | `@acta-team/did-stellar-indexer` - rebuilds `controller → DIDs` from the registry's event stream, so a wallet can find the DIDs it already has | [`packages/indexer/`](./packages/indexer/) |
 | **Registry contract** | `did-stellar-registry` on Stellar testnet | [`CB7ATU7SF5...NNZJ`](https://stellar.expert/explorer/testnet/contract/CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ) |
 
 ## Quick start
@@ -30,6 +31,11 @@ const { didDocument } = await resolveDidStellar(
 );
 ```
 
+**List the DIDs a wallet already holds** (so you do not mint a duplicate):
+```bash
+curl "https://did.acta.build/v1/dids/stellar?controller=GA46UJYF6ULGOW7O52RDJTNURP76SR3C3LB2IEZ7LVFDB2QWA2KEVTKX&network=testnet"
+```
+
 **DIF Universal Resolver driver**:
 ```ts
 import { Resolver } from 'did-resolver';
@@ -48,6 +54,7 @@ const result = await resolver.resolve('did:stellar:testnet:znfxngsh46vkyqu6inrx4
 | [`docs/reference/api-reference.md`](./docs/reference/api-reference.md) | Every HTTP endpoint on `did.acta.build` — request/response JSON, status codes, content negotiation, rate limit headers |
 | [`docs/reference/error-codes.md`](./docs/reference/error-codes.md) | All 35 `DidErrorCode` values with contract error numbers, HTTP status codes, and descriptions |
 | [`docs/reference/configuration.md`](./docs/reference/configuration.md) | Every environment variable for `did.acta.build` with defaults, types, and validation rules |
+| [`packages/indexer/README.md`](./packages/indexer/README.md) | The controller → DIDs reverse index - why it is off-chain, how the event stream is folded into it, RPC retention limits, running it against Postgres/Supabase |
 | [`docs/internal/creation-paths.md`](./docs/internal/creation-paths.md) | Internal note: the three ways to create a `did:stellar` and why all produce equally valid DIDs |
 | [`docs/internal/empty-fields.md`](./docs/internal/empty-fields.md) | Internal note: why `assertionMethod` / `keyAgreement` / `service` may resolve empty depending on the path used to create the DID |
 
@@ -56,8 +63,11 @@ const result = await resolver.resolve('did:stellar:testnet:znfxngsh46vkyqu6inrx4
 ```
 did-stellar/
 ├── packages/
-│   ├── resolver/   # @acta-team/did-stellar       — SDK (npm)
-│   └── api/        # did.acta.build                — HTTP resolver (Railway)
+│   ├── resolver/   # @acta-team/did-stellar         - SDK (npm)
+│   ├── indexer/    # @acta-team/did-stellar-indexer - controller → DIDs reverse index
+│   │               #   (embedded in the API; also deployable as its own worker)
+│   ├── api/        # did.acta.build                  - HTTP resolver (Railway)
+│   └── web/        # did.acta.build marketing site
 └── docs/           # method, SDK, API, errors, config docs
 ```
 

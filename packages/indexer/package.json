@@ -1,27 +1,28 @@
 {
-  "name": "did-stellar-api",
+  "name": "@acta-team/did-stellar-indexer",
   "version": "0.1.0",
   "private": true,
-  "description": "Standalone HTTP service for the did:stellar v0.1 method. Wraps @acta-team/did-stellar; exposes a W3C DID Resolver (GET /1.0/identifiers/{did}) plus the lifecycle endpoints. No auth, trust-minimised.",
+  "description": "Reverse index for did:stellar — ingests did-stellar-registry contract events (mainnet + testnet) and answers \"which DIDs does this controller hold?\".",
   "license": "Apache-2.0",
   "author": "ACTA",
   "type": "commonjs",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "did-stellar-api": "dist/index.js"
+    "did-stellar-indexer": "dist/bin/worker.js"
   },
   "files": [
     "dist",
+    "sql",
     "README.md",
-    "CHANGELOG.md",
     "LICENSE",
     "NOTICE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "build:watch": "tsc -p tsconfig.build.json --watch",
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
+    "dev": "tsx watch src/bin/worker.ts",
+    "start": "node dist/bin/worker.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
@@ -35,25 +36,14 @@
   },
   "dependencies": {
     "@acta-team/did-stellar": "workspace:*",
-    "@acta-team/did-stellar-indexer": "workspace:*",
-    "cors": "^2.8.5",
-    "express": "^5.2.1",
-    "helmet": "^8.1.0",
-    "ioredis": "^5.10.0",
-    "pino": "^9.5.0",
-    "posthog-node": "^4.18.0",
-    "pino-http": "^10.3.0",
-    "swagger-ui-dist": "^5.32.6"
+    "@stellar/stellar-sdk": "^15.0.0",
+    "pg": "^8.13.0",
+    "pino": "^9.5.0"
   },
   "devDependencies": {
-    "@stellar/stellar-sdk": "^15.0.0",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
-    "@types/supertest": "^7.2.0",
-    "@types/swagger-ui-dist": "^3.30.6",
+    "@types/pg": "^8.11.10",
     "@vitest/coverage-v8": "^4.1.10",
     "rimraf": "^6.0.1",
-    "supertest": "^7.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vite": "^7.1.12",
@@ -62,6 +52,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ACTA-Team/did-stellar.git",
-    "directory": "packages/api"
+    "directory": "packages/indexer"
   }
 }

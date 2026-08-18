@@ -24,11 +24,32 @@ Liveness probe. Does not call Stellar RPC or Redis.
   "status": "ok",
   "service": "did-stellar-api",
   "method": "did:stellar",
-  "network": "testnet",
-  "registryContractId": "CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ",
-  "startedAt": "2026-05-26T00:00:00.000Z"
+  "networks": {
+    "testnet": "CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ",
+    "mainnet": "CD6LSWW5ZSXOO5WAIHKQLQ262TW7BPI37PNEVMMA273BAPC65NN2AYXQ"
+  },
+  "startedAt": "2026-05-26T00:00:00.000Z",
+  "index": {
+    "mode": "embedded",
+    "store": "memory",
+    "ready": true,
+    "networks": [
+      {
+        "network": "testnet",
+        "configured": true,
+        "dids": 3,
+        "firstLedger": 4077775,
+        "lastLedger": 4198736,
+        "syncedAt": "2026-08-18T01:14:05.675Z",
+        "lastError": null
+      }
+    ]
+  }
 }
 ```
+
+`index` is `null` when the reverse index is disabled. A lagging or failed
+index never changes `status` - the resolver endpoints do not depend on it.
 
 ---
 
@@ -98,6 +119,96 @@ DIF Universal Resolver compatible endpoint.
 **Response `410`** — deactivated DID (tombstone document with empty arrays).
 
 **Response `502`** — Stellar RPC unreachable.
+
+---
+
+### `GET /v1/dids/stellar` - DIDs by controller (reverse index)
+
+Lists every DID a Stellar address currently controls.
+
+A wallet may hold several `did:stellar` identifiers on purpose - the
+method spec recommends one DID per relying party so a holder cannot be
+correlated across contexts (§7.2, §8.3). The registry contract stores only
+`did_id → record`, so this listing is served from an off-chain index
+rebuilt from the contract's event stream
+(see [`packages/indexer/`](../../packages/indexer/)).
+
+**Query parameters** (both required):
+
+| Name | Type | Description |
+|---|---|---|
+| `controller` | `G...` account or `C...` contract | The address holding the DIDs |
+| `network` | `mainnet` \| `testnet` | Which network to list. The same address controls different DIDs on each |
+
+**Semantics**
+
+- Deactivated DIDs are **included**, flagged `deactivated: true`.
+- A DID moved by `transfer_controller` is reported under its **new**
+  controller only.
+- A wallet with no DIDs returns `200` with `dids: []` - never `404`.
+- Results are ordered by `createdLedger`, then `didId`.
+
+**Response `200`**:
+```json
+{
+  "controller": "GA46UJYF6ULGOW7O52RDJTNURP76SR3C3LB2IEZ7LVFDB2QWA2KEVTKX",
+  "network": "testnet",
+  "count": 2,
+  "dids": [
+    {
+      "did": "did:stellar:testnet:43imozsjua5w7wcaum5a4hev4q",
+      "didId": "43imozsjua5w7wcaum5a4hev4q",
+      "version": 1,
+      "deactivated": false,
+      "createdLedger": 4081007,
+      "updatedLedger": 4081007
+    },
+    {
+      "did": "did:stellar:testnet:3argppyl4haefk62url2mwvyvq",
+      "didId": "3argppyl4haefk62url2mwvyvq",
+      "version": 1,
+      "deactivated": false,
+      "createdLedger": 4081065,
+      "updatedLedger": 4081065
+    }
+  ],
+  "index": {
+    "verified": true,
+    "fromLedger": 4077775,
+    "toLedger": 4198736,
+    "syncedAt": "2026-08-18T01:14:05.675Z"
+  }
+}
+```
+
+**The `index` block** describes the freshness of the answer:
+
+| Field | Meaning |
+|---|---|
+| `verified` | `true` when every listed DID was confirmed against the ledger before responding (`DID_INDEX_VERIFY_ON_READ`, on by default). Then `version`, `deactivated` and the controller are exactly what the contract holds |
+| `fromLedger` | First ledger the index ingested events from |
+| `toLedger` | Last ledger the index has ingested |
+| `syncedAt` | When the last successful sync finished |
+
+**Error responses**
+
+| Status | `code` | When |
+|---|---|---|
+| `400` | `controller_required` | `controller` was not supplied |
+| `400` | `controller_invalid` | Not a valid `G...` / `C...` address |
+| `400` | `network_invalid` | `network` missing, or not `mainnet` / `testnet` |
+| `501` | `index_unavailable` | The index is disabled (`DID_INDEX_ENABLED=false`) |
+| `501` | `network_unavailable` | No registry configured for that network |
+| `503` | `index_warming` | The initial backfill has not finished. Sent with `Retry-After: 5`. Answering from a half-built index would under-report a wallet - which is exactly what makes an app mint a duplicate DID |
+
+**Coverage caveat.** Soroban RPC retains events for a rolling window
+(~1 week on the public endpoints). The backfill ingests everything the
+RPC still has; DIDs registered before that window become visible once
+they emit any event, at which point reconciliation reads the
+authoritative record off the ledger. For a complete index from a
+contract's first ledger, run the indexer against an archival RPC with
+`DID_INDEX_START_LEDGER_*`. See
+[`packages/indexer/README.md`](../../packages/indexer/README.md).
 
 ---
 

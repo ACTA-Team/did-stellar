@@ -7,6 +7,7 @@
  * exercise the genuine wiring and only assert HTTP-shape concerns.
  */
 
+import { MemoryIndexStore } from '@acta-team/did-stellar-indexer';
 import { Keypair } from '@stellar/stellar-sdk';
 import pino from 'pino';
 import request from 'supertest';
@@ -17,6 +18,7 @@ import { InMemoryCache } from '../src/lib/cache';
 import { buildApp } from '../src/server';
 
 import type { AppConfig } from '../src/config';
+import type { DidIndexStore } from '@acta-team/did-stellar-indexer';
 
 const TESTNET_CONTRACT = 'CB7ATU7SF5QUKJMSULJDJVWJZVDXC23HTZX6NFUDTSFPVT6MA575NNZJ';
 const MAINNET_CONTRACT = 'CD6LSWW5ZSXOO5WAIHKQLQ262TW7BPI37PNEVMMA273BAPC65NN2AYXQ';
@@ -43,17 +45,47 @@ function makeConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     logLevel: 'fatal',
     nodeEnv: 'test',
     analytics: { apiKey: null, host: 'https://us.i.posthog.com' },
+    index: {
+      enabled: true,
+      mode: 'embedded',
+      store: { kind: 'memory' },
+      networks: {
+        testnet: {
+          rpcUrl: 'https://soroban-testnet.stellar.org',
+          registryContractId: TESTNET_CONTRACT,
+          allowHttp: false,
+        },
+        mainnet: {
+          rpcUrl: 'https://mainnet.sorobanrpc.com',
+          registryContractId: MAINNET_CONTRACT,
+          allowHttp: false,
+        },
+      },
+      pollIntervalSeconds: 10,
+      reconcileIntervalSeconds: 900,
+      reconcileBatch: 500,
+      // Tests must never reach Stellar RPC; the index is pre-seeded instead.
+      verifyOnRead: false,
+    },
   };
   return Object.freeze({ ...base, ...overrides });
 }
 
-function makeApp(overrides: Partial<AppConfig> = {}) {
+interface AppOverrides {
+  /** Pass `null` to exercise the "index disabled" path. */
+  readonly indexStore?: DidIndexStore | null;
+  readonly indexReady?: () => boolean;
+}
+
+function makeApp(config: Partial<AppConfig> = {}, app: AppOverrides = {}) {
   return buildApp({
-    config: makeConfig(overrides),
+    config: makeConfig(config),
     cache: new InMemoryCache(),
     logger: pino({ level: 'silent' }),
     // apiKey: null → no-op analytics; tests never touch PostHog.
     analytics: buildAnalytics({ apiKey: null, host: 'https://us.i.posthog.com' }),
+    indexStore: 'indexStore' in app ? (app.indexStore ?? null) : new MemoryIndexStore(),
+    ...(app.indexReady ? { indexReady: app.indexReady } : {}),
   });
 }
 

@@ -1,9 +1,4 @@
-export type {
-  DidKey,
-  DidRecord,
-  DidRecordInput,
-  DidService,
-} from './types';
+export type { DidKey, DidRecord, DidRecordInput, DidService } from './types';
 export {
   DID_RECORD_LIMITS,
   MAX_KEY_COUNT_AGREEMENT,
@@ -20,5 +15,5 @@ export {
 export { validateDidRecordInput } from './validate';
 export { encodeDidRecord } from './encode';
 export { decodeDidRecord } from './decode';
-export { readDidRecord } from './reader';
+export { buildDidRecordLedgerKey, decodeLedgerEntryRecord, readDidRecord } from './reader';
 export type { ReadDidRecordOptions } from './reader';

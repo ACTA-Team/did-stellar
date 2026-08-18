@@ -37,21 +37,11 @@ export { DidError, contractErrorCodeFromNumber, fromContractErrorMessage } from 
 export type { DidErrorCode, DidErrorOptions } from './errors';
 
 // --- Multikey ---------------------------------------------------------------
-export {
-  decodeMultibaseBase58btc,
-  decodeMultikey,
-  detectCurve,
-  encodeMultikey,
-} from './multikey';
+export { decodeMultibaseBase58btc, decodeMultikey, detectCurve, encodeMultikey } from './multikey';
 export type { MultikeyCurve } from './multikey';
 
 // --- Record -----------------------------------------------------------------
-export type {
-  DidKey,
-  DidRecord,
-  DidRecordInput,
-  DidService,
-} from './record/types';
+export type { DidKey, DidRecord, DidRecordInput, DidService } from './record/types';
 export {
   DID_RECORD_LIMITS,
   MAX_KEY_COUNT_AGREEMENT,
@@ -66,7 +56,9 @@ export {
   MIN_KEY_COUNT_AUTH,
 } from './record/types';
 export {
+  buildDidRecordLedgerKey,
   decodeDidRecord,
+  decodeLedgerEntryRecord,
   encodeDidRecord,
   readDidRecord,
   validateDidRecordInput,
@@ -78,12 +70,7 @@ export { buildRpcServer } from './internal/rpc';
 export type { RpcServerOptions } from './internal/rpc';
 
 // --- Document ---------------------------------------------------------------
-export {
-  DID_CONTEXT_V1,
-  MULTIKEY_CONTEXT_V1,
-  buildDidDocument,
-  buildTombstone,
-} from './document';
+export { DID_CONTEXT_V1, MULTIKEY_CONTEXT_V1, buildDidDocument, buildTombstone } from './document';
 export type {
   BuildDidDocumentOptions,
   BuildTombstoneOptions,
@@ -136,11 +123,10 @@ export type {
 
 // --- HTTP Client ------------------------------------------------------------
 export { ActaDidClient } from './http-client';
-export type {
-  ActaDidClientOptions,
-  DidMutationResponse,
-  DidRecordResponse,
-} from './http-client';
+export type { ActaDidClientOptions, DidMutationResponse, DidRecordResponse } from './http-client';
+
+// --- Address helpers --------------------------------------------------------
+export { isValidAddress } from './utils/address';
 
 // --- Branded primitives -----------------------------------------------------
 export type { Brand, Hex32, Url } from './utils/branded';
