@@ -65,6 +65,7 @@ did-stellar/
 ├── packages/
 │   ├── resolver/   # @acta-team/did-stellar         - SDK (npm)
 │   ├── indexer/    # @acta-team/did-stellar-indexer - controller → DIDs reverse index
+│   │               #   (embedded in the API; also deployable as its own worker)
 │   ├── api/        # did.acta.build                  - HTTP resolver (Railway)
 │   └── web/        # did.acta.build marketing site
 └── docs/           # method, SDK, API, errors, config docs

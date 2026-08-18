@@ -1,0 +1,24 @@
+# Railway config for the did-stellar-indexer worker.
+#
+# The repo root railway.toml configures the API service. Railway reads one
+# config file per service, so point this service's "Config as code" path
+# (Service -> Settings -> Config-as-code) at:
+#
+#     packages/indexer/railway.toml
+#
+# Both services build from the same repo with the repo root as the Docker
+# build context, which is what these multi-stage Dockerfiles expect.
+
+[build]
+# Dockerfile path relative to the repo root.
+dockerfilePath = "packages/indexer/Dockerfile"
+
+[deploy]
+# No healthcheckPath: the worker serves no HTTP. Liveness is the process
+# staying up, and ingestion state is visible through the API's /health.
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+# Exactly one writer. Several replicas would each walk the same pages and
+# contend on the same cursor row for no gain.
+numReplicas = 1

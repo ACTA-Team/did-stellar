@@ -123,6 +123,50 @@ DID_INDEX_DATABASE_URL=postgres://... pnpm --filter @acta-team/did-stellar-index
 DID_INDEX_DATABASE_URL=postgres://... DID_INDEX_MODE=external pnpm --filter did-stellar-api start
 ```
 
+### On Railway
+
+The repo already deploys `did-stellar-api` from `railway.toml` at the root.
+Two ways to get the index there:
+
+**Nothing to deploy (default).** The API embeds the indexer, so the
+existing service already answers the endpoint. It rebuilds an in-memory
+index on every boot and only works with a single instance. Fine to start
+with; nothing to configure.
+
+**A second Railway service, once you want durability or replicas.** In the
+same Railway project:
+
+1. **Add Postgres.** `New -> Database -> Add PostgreSQL`. Railway exposes
+   it as `DATABASE_URL`, which the indexer already falls back to, so you
+   can also just reference it: `DID_INDEX_DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+2. **Add the worker service.** `New -> GitHub Repo`, same repo, then set
+   *Settings -> Config-as-code* to `packages/indexer/railway.toml`. That
+   file points at `packages/indexer/Dockerfile` and pins the service to one
+   replica, which is what a single-writer index wants. Leave it with no
+   public domain: the worker serves no HTTP.
+3. **Flip the API to read-only.** On the API service set
+   `DID_INDEX_MODE=external` and the same `DID_INDEX_DATABASE_URL`. Now the
+   worker writes and every API replica reads.
+
+The schema is created on boot, so step 1 needs no migration. Apply
+`sql/001_did_index.sql` yourself and set `DID_INDEX_PG_SKIP_SCHEMA=true` if
+the service role has no DDL grant.
+
+| Service | Config file | Public domain | Replicas |
+|---|---|---|---|
+| `did-stellar-api` | `railway.toml` | yes | as many as you want |
+| `did-stellar-indexer` | `packages/indexer/railway.toml` | no | exactly 1 |
+
+Both build with the repo root as the Docker context, which is what the
+multi-stage Dockerfiles expect.
+
+Two things to know. The worker has no healthcheck path because it listens
+on nothing; Railway keeps it alive through `restartPolicyType`, and
+ingestion state is visible in the API's `/health` under `index`. And do not
+scale the worker past one replica: several writers would each walk the same
+pages and contend on the same cursor row for no gain. Scale the API
+instead.
+
 ### As a library
 
 ```ts

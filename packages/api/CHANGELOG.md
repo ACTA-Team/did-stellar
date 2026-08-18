@@ -43,6 +43,11 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   list in [`.env.example`](./.env.example) and
   [`docs/reference/configuration.md`](../../docs/reference/configuration.md).
 
+- The indexer can run as a separate Railway service
+  (`packages/indexer/Dockerfile` + `packages/indexer/railway.toml`) with the
+  API in `DID_INDEX_MODE=external`, which is what a multi-replica deployment
+  wants. A single API instance needs none of that: it embeds the indexer.
+
 - `GET /health` gains an `index` block with per-network ingestion state (rows
   indexed, ledger range covered, last sync, last error). It is reported, never
   asserted on: a lagging index does not change `status`, because the resolver

@@ -19,7 +19,7 @@
 
 import { buildRpcServer, type NetworkType } from '@acta-team/did-stellar';
 
-import { syncNetwork, type SyncNetworkResult } from './ingest';
+import { errorMessage, syncNetwork, type SyncNetworkResult } from './ingest';
 import { reconcile } from './reconcile';
 
 import type { DidIndexStore } from './store/types';
@@ -209,7 +209,9 @@ export class DidIndexer {
           }
           results.push(result);
         } catch (err) {
-          runtime.lastError = err instanceof Error ? err.message : String(err);
+          // RPC failures arrive as plain JSON-RPC objects, not Errors;
+          // String(err) would put '[object Object]' in /health.
+          runtime.lastError = errorMessage(err);
           this.logger.error({ err, network: runtime.network }, 'indexer sync failed');
         }
       }

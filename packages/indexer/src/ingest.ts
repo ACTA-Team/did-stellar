@@ -40,6 +40,13 @@ import type { rpc } from '@stellar/stellar-sdk';
 export const DEFAULT_PAGE_LIMIT = 200;
 /** Pages per `syncNetwork` call, so one sync cannot run unbounded. */
 export const DEFAULT_MAX_PAGES = 200;
+/**
+ * Ledgers of headroom above the RPC's reported `oldestLedger`. See
+ * {@link retentionFloor}. Twelve ledgers is about a minute of slack.
+ */
+export const RETENTION_SAFETY_MARGIN = 12;
+/** How many times one sync re-reads `getHealth` for a fresher floor. */
+const MAX_REFLOOR_ATTEMPTS = 2;
 
 export interface SyncNetworkOptions {
   readonly store: DidIndexStore;
@@ -89,9 +96,9 @@ export async function syncNetwork(opts: SyncNetworkOptions): Promise<SyncNetwork
   const health = await opts.rpcServer.getHealth();
 
   const stored = await opts.store.getCursor(opts.network);
-  const floor = Math.max(1, health.oldestLedger);
+  const floor = retentionFloor(health.oldestLedger);
   const requestedStart = opts.startLedger ?? floor;
-  const startLedger = clampInt(requestedStart, floor, Math.max(floor, health.latestLedger));
+  let startLedger = clampInt(requestedStart, floor, Math.max(floor, health.latestLedger));
 
   const filters: rpc.Api.EventFilter[] = [
     { type: 'contract', contractIds: [opts.registryContractId] },
@@ -99,6 +106,7 @@ export async function syncNetwork(opts: SyncNetworkOptions): Promise<SyncNetwork
 
   let cursor = stored?.cursor ?? null;
   let rewound = false;
+  let refloors = 0;
   let seen = 0;
   let decoded = 0;
   let written = 0;
@@ -117,13 +125,30 @@ export async function syncNetwork(opts: SyncNetworkOptions): Promise<SyncNetwork
           : { filters, cursor, limit: pageLimit }
       );
     } catch (err) {
-      // A cursor older than `oldestLedger` is rejected by the RPC. Rewind
-      // once to the retention floor and retry; anything else propagates.
-      if (cursor !== null && !rewound && isOutOfRangeError(err)) {
-        cursor = null;
-        rewound = true;
-        firstLedger = floor;
-        continue;
+      if (isOutOfRangeError(err)) {
+        // A stored cursor older than the retention window is rejected.
+        // Rewind once to the floor; the reducer is idempotent, so
+        // re-reading the window is safe.
+        if (cursor !== null && !rewound) {
+          cursor = null;
+          rewound = true;
+          startLedger = floor;
+          firstLedger = floor;
+          continue;
+        }
+        // The floor itself was rejected. `getHealth().oldestLedger` is a
+        // moving target: the window slides forward as ledgers close, so a
+        // value read moments ago can already be too old by the time
+        // `getEvents` is served. Re-read health and try the fresh floor.
+        if (cursor === null && refloors < MAX_REFLOOR_ATTEMPTS) {
+          refloors += 1;
+          const fresh = await opts.rpcServer.getHealth();
+          const freshFloor = retentionFloor(fresh.oldestLedger);
+          if (freshFloor <= startLedger) throw err; // not the boundary; do not spin
+          startLedger = freshFloor;
+          firstLedger = freshFloor;
+          continue;
+        }
       }
       throw err;
     }
@@ -181,19 +206,66 @@ export async function syncNetwork(opts: SyncNetworkOptions): Promise<SyncNetwork
 /**
  * Recognise the RPC's "start is before the oldest retained ledger" family
  * of errors. The wording is not part of any spec, so this matches loosely
- * and the caller only ever uses it to decide whether to rewind once.
+ * and the caller only ever uses it to decide whether to retry.
  */
 export function isOutOfRangeError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  const lowered = message.toLowerCase();
+  const lowered = errorMessage(err).toLowerCase();
   return (
     lowered.includes('oldest ledger') ||
     lowered.includes('oldestledger') ||
     lowered.includes('start is before') ||
+    lowered.includes('must be within the ledger range') ||
     lowered.includes('startledger must be within') ||
     lowered.includes('out of range') ||
     lowered.includes('invalid cursor')
   );
+}
+
+/**
+ * Best-effort message for anything thrown across the RPC boundary.
+ *
+ * Soroban RPC failures arrive as **plain objects** (`{ code, message }`
+ * from the JSON-RPC error envelope), not `Error` instances, so
+ * `String(err)` yields `[object Object]` and swallows the reason. Reading
+ * `message` off any object shape is what makes {@link isOutOfRangeError}
+ * work and what keeps `lastError` legible in `/health`.
+ */
+export function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object' && err !== null) {
+    const { message, code } = err as { message?: unknown; code?: unknown };
+    if (typeof message === 'string' && message.length > 0) {
+      return typeof code === 'number' || typeof code === 'string'
+        ? `${message} (code ${String(code)})`
+        : message;
+    }
+    try {
+      // `JSON.stringify` returns undefined for some exotic values.
+      return JSON.stringify(err) ?? Object.prototype.toString.call(err);
+    } catch {
+      // Circular or otherwise unserialisable. The class tag is still more
+      // use than the `[object Object]` this function exists to avoid.
+      return Object.prototype.toString.call(err);
+    }
+  }
+  // Primitives only by this point, so stringification is meaningful.
+  return String(err);
+}
+
+/**
+ * The oldest ledger it is actually safe to ask `getEvents` for.
+ *
+ * `getHealth().oldestLedger` is the *current* edge of the retention
+ * window, and that edge slides forward every time a ledger closes (~5s).
+ * Asking for exactly that ledger is a race: on mainnet it is routinely
+ * rejected because the window moved between the two calls. The margin
+ * costs a minute of the oldest history and removes the race entirely;
+ * anything it skips is recovered by `reconcile()`, which reads the ledger
+ * and is not retention-bound.
+ */
+function retentionFloor(oldestLedger: number): number {
+  return Math.max(1, oldestLedger + RETENTION_SAFETY_MARGIN);
 }
 
 function clampInt(value: number, min: number, max: number): number {

@@ -76,6 +76,25 @@ state of the monorepo.
   For a complete index from a contract's first ledger, run against an archival
   RPC with `DID_INDEX_START_LEDGER_*`.
 
+- **Deployable as its own Railway service.** `packages/indexer/Dockerfile`
+  builds the worker image and `packages/indexer/railway.toml` configures it
+  (single replica, no public domain, no healthcheck path since it serves no
+  HTTP). Point the service's config-as-code path at that file, add Railway
+  Postgres, and set `DID_INDEX_MODE=external` on the API. Running the API
+  alone still needs none of this: it embeds the indexer by default.
+
+- Ingestion survives the retention-window boundary. `getHealth().oldestLedger`
+  is a moving target - the window slides forward every time a ledger closes -
+  so the floor read moments earlier can already be rejected by `getEvents`.
+  Live mainnet failed with `startLedger must be within the ledger range:
+  63883575 - 64004534` while `getHealth` had just reported `63882605`. The
+  floor now carries a small safety margin and a rejected floor triggers one
+  re-read of `getHealth` rather than failing the sync. Two compounding causes
+  had hidden it: Soroban RPC rejects with a plain JSON-RPC object rather than
+  an `Error`, so `String(err)` collapsed to `[object Object]` and the
+  out-of-range matcher never fired; and the retry path was reachable only
+  from a stored cursor, never from the first backfill.
+
 - SDK: `buildDidRecordLedgerKey`, `decodeLedgerEntryRecord` and
   `isValidAddress` are now exported so a batched reader does not have to
   re-derive the storage-key wire format. `/health` gains an `index` block with

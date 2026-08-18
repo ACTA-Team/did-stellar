@@ -12,7 +12,12 @@ import { buildDidRecordLedgerKey, decodeDidId, encodeDidRecord } from '@acta-tea
 import { nativeToScVal, xdr } from '@stellar/stellar-sdk';
 import { describe, expect, it } from 'vitest';
 
-import { syncNetwork } from '../src/ingest';
+import {
+  errorMessage,
+  isOutOfRangeError,
+  RETENTION_SAFETY_MARGIN,
+  syncNetwork,
+} from '../src/ingest';
 import { listDidsByController } from '../src/query';
 import { readDidRecords, reconcile } from '../src/reconcile';
 import { MemoryIndexStore } from '../src/store/memory';
@@ -32,14 +37,33 @@ interface FakeRpcOptions {
   readonly events: rpc.Api.EventResponse[];
   readonly oldestLedger?: number;
   readonly latestLedger?: number;
+  /**
+   * The floor `getEvents` actually enforces, when it differs from what
+   * `getHealth` reports. Models the real race on mainnet: the retention
+   * window slides forward as ledgers close, so the value read from
+   * `getHealth` can already be stale by the time `getEvents` is served.
+   */
+  readonly eventsOldestLedger?: number;
+  /** When set, `getHealth` reports this floor from the 2nd call onwards. */
+  readonly oldestLedgerAfterRefresh?: number;
   /** Records the ledger holds, keyed by didId. Absent = no storage entry. */
   readonly records?: Record<string, DidRecord>;
+}
+
+/**
+ * Soroban RPC surfaces failures as plain JSON-RPC objects, not `Error`
+ * instances. Throwing the real shape here is what caught the mainnet bug
+ * where `String(err)` collapsed to `[object Object]`.
+ */
+function rpcError(message: string): unknown {
+  return { type: 'Object', message, stack: '', code: -32600 };
 }
 
 /** Minimal `rpc.Server` stand-in. Records every request it served. */
 class FakeRpc {
   readonly getEventsCalls: unknown[] = [];
   readonly ledgerEntryCalls: number[] = [];
+  healthCalls = 0;
 
   constructor(private readonly opts: FakeRpcOptions) {}
 
@@ -48,10 +72,14 @@ class FakeRpc {
   }
 
   getHealth(): Promise<rpc.Api.GetHealthResponse> {
+    this.healthCalls += 1;
+    const refreshed = this.opts.oldestLedgerAfterRefresh;
+    const oldestLedger =
+      refreshed !== undefined && this.healthCalls > 1 ? refreshed : this.oldestLedger;
     return Promise.resolve({
       status: 'healthy',
       latestLedger: this.opts.latestLedger ?? 1000,
-      oldestLedger: this.oldestLedger,
+      oldestLedger,
       ledgerRetentionWindow: 17_280,
     });
   }
@@ -63,12 +91,21 @@ class FakeRpc {
     let offset = 0;
     if ('cursor' in request && request.cursor) {
       const parsed = Number.parseInt(request.cursor, 10);
-      if (Number.isNaN(parsed)) return Promise.reject(new Error('invalid cursor'));
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Soroban RPC rejects with a plain object, and that is what this fake must reproduce.
+      if (Number.isNaN(parsed)) return Promise.reject(rpcError('invalid cursor'));
       offset = parsed;
     } else if ('startLedger' in request && request.startLedger !== undefined) {
-      if (request.startLedger < this.oldestLedger) {
+      // The window the RPC will actually serve, which may already have
+      // moved past what `getHealth` reported.
+      const serveFrom = this.opts.eventsOldestLedger ?? this.oldestLedger;
+      if (request.startLedger < serveFrom) {
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- see above: the non-Error shape is the regression under test.
         return Promise.reject(
-          new Error('startLedger must be within the ledger retention window: oldest ledger is 500')
+          rpcError(
+            `startLedger must be within the ledger range: ${serveFrom} - ${
+              this.opts.latestLedger ?? 1000
+            }`
+          )
         );
       }
       offset = this.opts.events.findIndex((e) => e.ledger >= request.startLedger);
@@ -186,7 +223,9 @@ describe('syncNetwork', () => {
     });
 
     expect(result).toMatchObject({ seen: 2, decoded: 2, written: 2, truncated: false });
-    expect(result.fromLedger).toBe(500);
+    // The floor carries RETENTION_SAFETY_MARGIN of headroom above the
+    // RPC's reported oldestLedger.
+    expect(result.fromLedger).toBe(500 + RETENTION_SAFETY_MARGIN);
     expect(result.toLedger).toBe(900);
 
     const { dids } = await listDidsByController({ store, network: 'testnet', controller: ALICE });
@@ -208,7 +247,7 @@ describe('syncNetwork', () => {
       startLedger: 1,
     });
 
-    expect(result.fromLedger).toBe(500);
+    expect(result.fromLedger).toBe(500 + RETENTION_SAFETY_MARGIN);
     expect(result.decoded).toBe(1);
   });
 
@@ -274,7 +313,7 @@ describe('syncNetwork', () => {
     });
 
     expect(result.rewound).toBe(true);
-    expect(result.fromLedger).toBe(500);
+    expect(result.fromLedger).toBe(500 + RETENTION_SAFETY_MARGIN);
     expect(result.decoded).toBe(1);
   });
 });
@@ -432,5 +471,107 @@ describe('readDidRecords', () => {
       chunkSize: 1,
     });
     expect(rpcServer.ledgerEntryCalls).toEqual([1, 1]);
+  });
+});
+
+describe('retention-window boundary (mainnet regression)', () => {
+  // `getHealth().oldestLedger` is a moving target: the window slides
+  // forward every time a ledger closes, so the floor read moments ago can
+  // already be rejected by `getEvents`. Live mainnet failed with
+  // "startLedger must be within the ledger range: 63883575 - 64004534"
+  // while getHealth had just reported 63882605.
+
+  it('recovers when getEvents rejects the floor getHealth reported', async () => {
+    const store = new MemoryIndexStore();
+    const rpcServer = new FakeRpc({
+      oldestLedger: 500,
+      // The window has already moved past 500 + margin by the time
+      // getEvents is served; only a re-read of health reveals it.
+      eventsOldestLedger: 700,
+      oldestLedgerAfterRefresh: 700,
+      events: [registeredEvent({ didId: DID_A, controller: ALICE, ledger: 800 })],
+    });
+
+    const result = await syncNetwork({
+      store,
+      rpcServer: rpcServer.asServer(),
+      registryContractId: CONTRACT,
+      network: 'testnet',
+    });
+
+    expect(result.decoded).toBe(1);
+    expect(result.fromLedger).toBe(700 + RETENTION_SAFETY_MARGIN);
+    expect(rpcServer.healthCalls).toBe(2);
+  });
+
+  it('gives up instead of spinning when a fresh floor does not help', async () => {
+    const store = new MemoryIndexStore();
+    const rpcServer = new FakeRpc({
+      oldestLedger: 500,
+      // getEvents rejects everything and health never moves, so retrying
+      // can never succeed. It must surface the error, not loop.
+      eventsOldestLedger: 100_000,
+      events: [],
+    });
+
+    await expect(
+      syncNetwork({
+        store,
+        rpcServer: rpcServer.asServer(),
+        registryContractId: CONTRACT,
+        network: 'testnet',
+      })
+    ).rejects.toBeDefined();
+    expect(rpcServer.healthCalls).toBe(2);
+  });
+
+  it('leaves the floor alone when the first request is accepted', async () => {
+    const store = new MemoryIndexStore();
+    const rpcServer = new FakeRpc({
+      oldestLedger: 500,
+      events: [registeredEvent({ didId: DID_A, controller: ALICE, ledger: 600 })],
+    });
+
+    await syncNetwork({
+      store,
+      rpcServer: rpcServer.asServer(),
+      registryContractId: CONTRACT,
+      network: 'testnet',
+    });
+
+    expect(rpcServer.healthCalls).toBe(1);
+  });
+});
+
+describe('RPC error shapes', () => {
+  // Soroban RPC rejects with a plain JSON-RPC object, never an Error.
+  const RAW = {
+    type: 'Object',
+    message: 'startLedger must be within the ledger range: 1 - 2',
+    code: -32600,
+  };
+
+  it('recognises an out-of-range error delivered as a plain object', () => {
+    expect(isOutOfRangeError(RAW)).toBe(true);
+    expect(isOutOfRangeError(new Error('startLedger must be within the ledger range: 1 - 2'))).toBe(
+      true
+    );
+  });
+
+  it('does not treat unrelated failures as out-of-range', () => {
+    expect(isOutOfRangeError(new Error('socket hang up'))).toBe(false);
+    expect(isOutOfRangeError({ message: 'internal server error', code: -32603 })).toBe(false);
+  });
+
+  it('extracts a readable message instead of [object Object]', () => {
+    expect(errorMessage(RAW)).toBe(
+      'startLedger must be within the ledger range: 1 - 2 (code -32600)'
+    );
+    expect(errorMessage(new Error('boom'))).toBe('boom');
+    expect(errorMessage('boom')).toBe('boom');
+    // Exactly what the mainnet bug put in the log, which is why
+    // errorMessage exists.
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
+    expect(String(RAW)).toBe('[object Object]');
   });
 });
