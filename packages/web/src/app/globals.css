@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+/* ===========================================================
+   ACTA Design System applied to did:stellar.
+
+   One palette, no theme switch: this is a specification site,
+   read in bright rooms, printed, and projected, and it should
+   look the same in all three. The page is a near-white sheet
+   and the accent is Stellar gold, split in two roles:
+     - #8f7340 for anything that carries text weight, so body
+       links and labels clear WCAG AA on the sheet.
+     - #ffd21f for fills only: the dot matrix, the badges, the
+       arrow disc. Never for text on white.
+   =========================================================== */
+:root {
+  --background: #fdfdfb;
+  --foreground: #101014;
+  --card: #ffffff;
+  --card-foreground: #101014;
+  --popover: #ffffff;
+  --popover-foreground: #101014;
+  --primary: #8f7340;
+  --primary-foreground: #fdfdfb;
+  --secondary: #f4f3ee;
+  --secondary-foreground: #1a1a1f;
+  --muted: #f4f3ee;
+  --muted-foreground: #6b6b73;
+  --accent: #8f7340;
+  --accent-foreground: #fdfdfb;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --success: #1f7a4d;
+  --info: #2f5fa8;
+  --border: #e6e4dd;
+  --input: #ffffff;
+  --ring: #8f7340;
+  --radius: 0.625rem;
+
+  /* Pure gold, fills only. Drives the dot matrix and the badges. */
+  --fill: #ffd21f;
+  --dot: #f0c400;
+
+  /* Surface shared by the syntax plate and code blocks. */
+  --console: #f6f5f0;
+  --console-border: #e6e4dd;
+}
+
+@theme inline {
+  /* Newsreader carries the argument, Jakarta explains it, Geist Mono
+     holds every identifier. A DID is a string that must never be
+     mistaken for prose, so it never leaves the mono face. */
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-fill: var(--fill);
+  --color-console: var(--console);
+  --color-console-border: var(--console-border);
+
+  /* Brand manual §05/06: 4px spacing base, 10px radius base. */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  /* The site is one page, so every nav link is a jump within it. Leave
+     room for the sticky header and glide instead of teleporting.
+     Next 16 no longer overrides scroll-behavior during navigation, so
+     do NOT add data-scroll-behavior to <html>: that opts back into the
+     old override and makes these jumps instant again. */
+  html {
+    scroll-padding-top: 7rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--fill) 45%, transparent);
+  }
+}
+
+@layer utilities {
+  /* Display face for the two or three lines per screen that carry the
+     argument. Slightly tightened, because Newsreader sets loose at
+     display sizes. */
+  .font-display {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+  }
+
+  /* The signature texture: a halftone of Stellar gold, fading out
+     before it reaches the content it sits behind. */
+  .bg-dots {
+    background-image: radial-gradient(
+      color-mix(in oklab, var(--dot) 55%, transparent) 1.1px,
+      transparent 1.2px
+    );
+    background-size: 14px 14px;
+    mask-image: radial-gradient(
+      120% 85% at 50% 0%,
+      #000 0%,
+      #000 38%,
+      transparent 78%
+    );
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
