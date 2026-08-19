@@ -1,6 +1,6 @@
 {
   "name": "did-stellar-api",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Standalone HTTP service for the did:stellar v0.1 method. Wraps @acta-team/did-stellar; exposes a W3C DID Resolver (GET /1.0/identifiers/{did}) plus the lifecycle endpoints. No auth, trust-minimised.",
   "license": "Apache-2.0",
