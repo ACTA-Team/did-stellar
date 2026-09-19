@@ -6,6 +6,15 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.1.0] -- Unreleased
 
+### Added (network configuration manifest)
+
+- **`GET /.well-known/acta-did-stellar.json`** -- one stable URL listing, per
+  network, the `did-stellar-registry` contract this deployment resolves
+  against, the ACTA credential contracts built on it (`vc-vault-factory`,
+  vault template WASM hash), the ACTA API base URL, and this resolver's
+  endpoints. Registry ids come from the live config; a network with no
+  registry configured is left out. Cached for 5 minutes.
+
 ### Added (reverse index: `controller` -> DIDs)
 
 - **`GET /v1/dids/stellar?controller=G...&network=testnet`** -- lists every DID
