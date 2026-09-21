@@ -22,6 +22,7 @@ import { healthRouter } from './routes/health';
 import { mutationsRouter } from './routes/mutations';
 import { recordsRouter } from './routes/records';
 import { resolverRouter } from './routes/resolver';
+import { wellKnownRouter } from './routes/well-known';
 
 import type { AppConfig } from './config';
 import type { Analytics } from './lib/analytics';
@@ -109,6 +110,7 @@ export function buildApp(deps: BuildAppDeps): Express {
       ...(deps.indexStatus ? { indexStatus: deps.indexStatus } : {}),
     })
   );
+  app.use(wellKnownRouter({ config: deps.config }));
   app.use(resolverRouter({ config: deps.config, cache: deps.cache, analytics: deps.analytics }));
   app.use(
     directoryRouter({

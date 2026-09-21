@@ -16,6 +16,25 @@ state of the monorepo.
 
 ---
 
+## [2026-09-19] -- `did-stellar-api` 0.1.2
+
+### Added
+
+- **Network configuration manifest** at
+  [`https://did.acta.build/.well-known/acta-did-stellar.json`](https://did.acta.build/.well-known/acta-did-stellar.json):
+  per network, the `did-stellar-registry` contract the resolver reads, the
+  ACTA credential contracts built on it (`vc-vault-factory`, vault template
+  WASM hash), the ACTA API base URL, and the resolver endpoints. Registry ids
+  come from the service config, so the manifest cannot drift from what the
+  resolver actually resolves against. See
+  [`packages/api/CHANGELOG.md`](./packages/api/CHANGELOG.md).
+
+### Security
+
+- `pnpm audit --audit-level=high --prod` is clean again: overrides for
+  `toml` (^4.2.0), `qs` (^6.16.0), `postcss` (^8.5.23) and `sharp`
+  (^0.35.4), and `packages/web` moves to `next` 16.3.5.
+
 ## [Unreleased]
 
 ### Added (reverse index: `controller` -> DIDs)

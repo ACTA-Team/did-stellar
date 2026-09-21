@@ -109,6 +109,55 @@ describe('did-stellar-api / server', () => {
     });
   });
 
+  describe('GET /.well-known/acta-did-stellar.json', () => {
+    it('publishes the configured registries, credential contracts and resolver endpoints', async () => {
+      const res = await request(makeApp())
+        .get('/.well-known/acta-did-stellar.json')
+        .set('Host', 'did.acta.build');
+      expect(res.status).toBe(200);
+      expect(res.headers['cache-control']).toBe('public, max-age=300');
+      expect(res.body).toMatchObject({
+        manifestVersion: 1,
+        method: 'did:stellar',
+        resolver: {
+          baseUrl: 'http://did.acta.build',
+          universalResolver: 'http://did.acta.build/1.0/identifiers/{did}',
+          rawRecord: 'http://did.acta.build/v1/dids/stellar/{did}',
+        },
+        networks: {
+          mainnet: {
+            didStellarRegistry: { contractId: MAINNET_CONTRACT },
+            vcVaultFactory: {
+              contractId: 'CCWNZ6UMUXCDOVP2TWOPVLI4KP4VY4YF7VKPN6XLYVHNFAT24NDB33CX',
+            },
+            api: 'https://production-api.acta.build',
+          },
+          testnet: {
+            didStellarRegistry: { contractId: TESTNET_CONTRACT },
+            vcVaultFactory: {
+              contractId: 'CDRFQRIP4FA3WMPWCSAM3XEY6EM6EGKRYZRSCSVZ5NHCF6AGEVR2XEPQ',
+            },
+            api: 'https://sandbox-api.acta.build',
+          },
+        },
+      });
+    });
+
+    it('leaves out a network with no registry configured', async () => {
+      const base = makeConfig();
+      const res = await request(
+        makeApp({
+          networks: {
+            ...base.networks,
+            testnet: { ...base.networks.testnet, registryContractId: '' },
+          },
+        })
+      ).get('/.well-known/acta-did-stellar.json');
+      expect(res.status).toBe(200);
+      expect(Object.keys(res.body.networks)).toEqual(['mainnet']);
+    });
+  });
+
   describe('GET /openapi.json', () => {
     it('returns an OpenAPI 3.1 spec', async () => {
       const res = await request(makeApp()).get('/openapi.json');

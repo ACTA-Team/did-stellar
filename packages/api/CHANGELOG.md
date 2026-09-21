@@ -4,6 +4,26 @@ All notable changes to the [`did.acta.build`](https://did.acta.build) HTTP resol
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] -- 2026-09-19
+
+### Added (network configuration manifest)
+
+- **`GET /.well-known/acta-did-stellar.json`** -- one stable URL listing, per
+  network, the `did-stellar-registry` contract this deployment resolves
+  against, the ACTA credential contracts built on it (`vc-vault-factory`,
+  vault template WASM hash), the ACTA API base URL, and this resolver's
+  endpoints. Registry ids come from the live config; a network with no
+  registry configured is left out. Cached for 5 minutes.
+
+### Security
+
+- Cleared every high and critical advisory reported by `pnpm audit --prod`,
+  which had started failing CI. Overrides raise `toml` to `^4.2.0`
+  (GHSA-v5mp-jgw5-2x6j, pulled in by `@stellar/stellar-sdk` 15.1.0; the 4.x
+  line keeps the same CommonJS `parse` export the SDK calls), `qs` to
+  `^6.16.0`, `postcss` to `^8.5.23` and `sharp` to `^0.35.4`; the site
+  moves to `next` 16.3.5. No runtime behaviour change in the API.
+
 ## [0.1.0] -- Unreleased
 
 ### Added (reverse index: `controller` -> DIDs)
